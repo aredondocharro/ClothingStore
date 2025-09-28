@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: clothingstore-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: clothingstore-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # --- SPRING MAIL (tu SMTP real) ---
+      SPRING_MAIL_HOST: ${MAIL_HOST}
+      SPRING_MAIL_PORT: ${MAIL_PORT}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
+      SPRING_MAIL_DEFAULT_ENCODING: UTF-8
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${MAIL_SMTP_STARTTLS}
+      SPRING_MAIL_PROPERTIES_MAIL_DEBUG: ${MAIL_DEBUG}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_FROM: ${MAIL_BOUNCES:-noreply@mydomain.com}
+
+      # --- APP (hexagonal mail) ---
+      APP_MAIL_DEFAULT_FROM: "${MAIL_FROM:-ClothingStore <noreply@mydomain.com>}"
+      APP_MAIL_DEFAULT_REPLY_TO: ${MAIL_REPLY_TO:-soporte@mydomain.com}
+      APP_MAIL_TEMPLATE_PREFIX: templates/email/
+      APP_MAIL_TEMPLATE_SUFFIX: .html
+      APP_MAIL_TEMPLATE_CACHE: ${MAIL_TPL_CACHE:-false}
+
+      # --- DATASOURCE + FLYWAY (HOST = nombre de servicio: postgres) ---
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:${DB_PORT:-5432}/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+
+      SPRING_FLYWAY_ENABLED: true
+      SPRING_FLYWAY_URL: jdbc:postgresql://postgres:${DB_PORT:-5432}/${DB_NAME}
+      SPRING_FLYWAY_USER: ${DB_USER}
+      SPRING_FLYWAY_PASSWORD: ${DB_PASSWORD}
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: true
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+
+volumes:
+  pg_data:

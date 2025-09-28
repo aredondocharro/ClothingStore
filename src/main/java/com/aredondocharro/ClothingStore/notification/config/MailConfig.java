@@ -1,0 +1,51 @@
+// src/main/java/com/aredondocharro/ClothingStore/notification/config/MailConfig.java
+package com.aredondocharro.ClothingStore.notification.config;
+
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.MessageSource;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.ResourceBundleMessageSource;
+import org.thymeleaf.spring6.SpringTemplateEngine;
+import org.thymeleaf.templatemode.TemplateMode;
+import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
+
+@Configuration
+@EnableConfigurationProperties(AppMailProperties.class)
+public class MailConfig {
+
+    @Bean(name = "emailTemplateResolver")
+    public ClassLoaderTemplateResolver emailTemplateResolver(AppMailProperties props) {
+        var r = new ClassLoaderTemplateResolver();
+        r.setPrefix(props.getTemplatePrefix());   // p.ej. "templates/email/"
+        r.setSuffix(props.getTemplateSuffix());   // p.ej. ".html"
+        r.setTemplateMode(TemplateMode.HTML);
+        r.setCharacterEncoding("UTF-8");
+        r.setCacheable(props.isTemplateCache());
+        r.setCheckExistence(true);
+        r.setOrder(1);
+        return r;
+    }
+
+    @Bean(name = "emailMessageSource")
+    public MessageSource emailMessageSource() {
+        var ms = new ResourceBundleMessageSource();
+        // Usamos tu messages.properties existente
+        ms.setBasename("messages");
+        ms.setDefaultEncoding("UTF-8");
+        ms.setFallbackToSystemLocale(false);
+        ms.setUseCodeAsDefaultMessage(false);
+        return ms;
+    }
+
+    @Bean(name = "emailTemplateEngine")
+    public SpringTemplateEngine emailTemplateEngine(
+            @Qualifier("emailTemplateResolver") ClassLoaderTemplateResolver resolver,
+            @Qualifier("emailMessageSource") MessageSource emailMessageSource) {
+        var engine = new SpringTemplateEngine();
+        engine.setTemplateResolver(resolver);
+        engine.setTemplateEngineMessageSource(emailMessageSource);
+        return engine;
+    }
+}
