@@ -1,6 +1,5 @@
 package com.aredondocharro.ClothingStore.notificationsTEST.adapter.in.web;
 
-
 import com.aredondocharro.ClothingStore.notification.adapter.port.in.web.EmailController;
 import com.aredondocharro.ClothingStore.notification.domain.port.in.SendEmailUseCase;
 import org.junit.jupiter.api.DisplayName;
@@ -12,11 +11,13 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = EmailController.class)
 class EmailControllerTest {
@@ -31,14 +32,14 @@ class EmailControllerTest {
     @DisplayName("returns 202 Accepted on valid request")
     void accepted_on_valid() throws Exception {
         String json = """
-        {
-          "from": "me@example.com",
-          "to": ["you@example.com"],
-          "subject": "Hello",
-          "body": "Hi there",
-          "html": false
-        }
-        """;
+    {
+      "from": "me@example.com",
+      "to": ["you@example.com"],
+      "templateId": "verify-email",
+      "model": { "verificationUrl": "http://x", "email": "you@example.com" },
+      "locale": "en"
+    }
+    """;
 
         mvc.perform(post("/email")
                         .with(csrf())
@@ -47,11 +48,16 @@ class EmailControllerTest {
                         .content(json))
                 .andExpect(status().isAccepted());
 
+        // Nueva firma del UseCase: (from, to, templateId, model, locale)
         Mockito.verify(useCase).send(
                 eq("me@example.com"),
-                eq(java.util.List.of("you@example.com")),
-                eq("Hello"), eq("Hi there"), eq(false));
+                eq(List.of("you@example.com")),
+                eq("verify-email"),
+                anyMap(),
+                any()
+        );
     }
+
 
     @Test
     @DisplayName("returns 400 Bad Request when validation fails")

@@ -31,8 +31,8 @@ public class MailConfig {
     @Bean(name = "emailMessageSource")
     public MessageSource emailMessageSource() {
         var ms = new ResourceBundleMessageSource();
-        // Usamos tu messages.properties existente
-        ms.setBasename("messages");
+        // Apunta a la carpeta i18n y carga varios bundles
+        ms.setBasenames("i18n/messages", "i18n/email");
         ms.setDefaultEncoding("UTF-8");
         ms.setFallbackToSystemLocale(false);
         ms.setUseCodeAsDefaultMessage(false);
