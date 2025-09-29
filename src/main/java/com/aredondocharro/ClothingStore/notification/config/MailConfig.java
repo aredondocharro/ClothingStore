@@ -30,12 +30,16 @@ public class MailConfig {
 
     @Bean(name = "emailMessageSource")
     public MessageSource emailMessageSource() {
-        var ms = new ResourceBundleMessageSource();
-        // Apunta a la carpeta i18n y carga varios bundles
-        ms.setBasenames("i18n/messages", "i18n/email");
+        var ms = new org.springframework.context.support.ReloadableResourceBundleMessageSource();
+        ms.setBasenames(
+                "classpath:i18n/messages",       // genérico si lo necesitas
+                "classpath:i18n/email-common",   // brand, footer, etc.
+                "classpath:i18n/email-verify",   // verificación
+                "classpath:i18n/email-order"     // (cuando lo añadas)
+        );
         ms.setDefaultEncoding("UTF-8");
         ms.setFallbackToSystemLocale(false);
-        ms.setUseCodeAsDefaultMessage(false);
+        ms.setCacheSeconds(5); // hot-reload en dev
         return ms;
     }
 
