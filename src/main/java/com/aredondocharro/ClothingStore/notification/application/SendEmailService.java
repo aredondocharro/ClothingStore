@@ -5,7 +5,7 @@ import com.aredondocharro.ClothingStore.notification.domain.model.EmailAddress;
 import com.aredondocharro.ClothingStore.notification.domain.port.in.SendEmailUseCase;
 import com.aredondocharro.ClothingStore.notification.domain.port.out.EmailSenderPort;
 import com.aredondocharro.ClothingStore.notification.domain.port.out.TemplateRendererPort;
-import com.aredondocharro.ClothingStore.notification.domain.exception.*; // ver abajo
+import com.aredondocharro.ClothingStore.notification.domain.exception.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

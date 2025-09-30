@@ -1,4 +1,3 @@
-// src/main/java/com/aredondocharro/ClothingStore/identity/infrastructure/in/web/AuthController.java
 package com.aredondocharro.ClothingStore.identity.infrastructure.in.web;
 
 import com.aredondocharro.ClothingStore.identity.domain.model.Email; // <-- VO correcto
@@ -23,7 +22,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 
-import static com.aredondocharro.ClothingStore.shared.log.LogSanitizer.maskEmail;
 
 @Slf4j
 @RestController
@@ -35,6 +33,7 @@ public class AuthController {
     private final RegisterUserUseCase registerUC;
     private final LoginUseCase loginUC;
     private final VerifyEmailUseCase verifyUC;
+
 
     @Operation(
             summary = "Register a new user (email verification required)",
@@ -65,7 +64,7 @@ public class AuthController {
 
         registerUC.register(emailVO, req.getPassword()); // <-- usar VO en el use case
 
-        log.info("Registration accepted for email={}", maskEmail(emailVO.getValue()));
+        log.info("Registration accepted for email={}", LogSanitizer.maskEmail(emailVO.getValue()));
         return ResponseEntity.accepted()
                 .body(new MessageResponse("Check your email to verify your account."));
     }
@@ -104,7 +103,7 @@ public class AuthController {
         final Email emailVO = Email.of(req.email()); // <-- convertir String -> VO
         log.debug("POST /auth/login email={}", emailVO.getValue());
         var result = loginUC.login(emailVO, req.password()); // <-- usar VO en el use case
-        log.info("Login success email={}", maskEmail(emailVO.getValue()));
+        log.info("Login success email={}", LogSanitizer.maskEmail(emailVO.getValue()));
         return ResponseEntity.ok(new AuthResponse(result.accessToken(), result.refreshToken()));
     }
 }

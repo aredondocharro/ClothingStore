@@ -1,4 +1,3 @@
-// src/main/java/com/aredondocharro/ClothingStore/notification/adapter/port/out/template/ThymeleafTemplateRendererAdapter.java
 package com.aredondocharro.ClothingStore.notification.infrastructure.out.template;
 
 import com.aredondocharro.ClothingStore.notification.domain.port.out.TemplateRendererPort;
