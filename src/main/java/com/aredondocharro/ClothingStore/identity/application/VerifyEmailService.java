@@ -1,5 +1,6 @@
 package com.aredondocharro.ClothingStore.identity.application;
 
+import com.aredondocharro.ClothingStore.identity.domain.exception.VerificationTokenInvalidException;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.VerifyEmailUseCase;
@@ -25,13 +26,13 @@ public class VerifyEmailService implements VerifyEmailUseCase {
     public AuthResult verify(String verificationToken) {
         UUID userId = verifier.validateAndExtractUserId(verificationToken);
         User user = loadUserPort.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid token"));
+                .orElseThrow(() -> new VerificationTokenInvalidException("Invalid token"));
 
-        if (!user.isEmailVerified()) {
+        if (!user.emailVerified()) {
             user = saveUserPort.save(user.verified());
-            log.info("User email verified id={} email={}", user.getId(), user.getEmail());
+            log.info("User email verified id={} email={}", user.id(), user.email().getValue());
         } else {
-            log.debug("User already verified id={}", user.getId());
+            log.debug("User already verified id={}", user.id());
         }
 
         // autologin

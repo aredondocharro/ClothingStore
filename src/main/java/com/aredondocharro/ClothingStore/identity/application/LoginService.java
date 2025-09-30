@@ -1,5 +1,9 @@
 package com.aredondocharro.ClothingStore.identity.application;
 
+import com.aredondocharro.ClothingStore.identity.domain.exception.EmailNotVerifiedException;
+import com.aredondocharro.ClothingStore.identity.domain.exception.InvalidCredentialsException;
+import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordRequiredException;
+import com.aredondocharro.ClothingStore.identity.domain.model.Email;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.LoginUseCase;
@@ -18,23 +22,25 @@ public class LoginService implements LoginUseCase {
     private final TokenGeneratorPort tokens;
 
     @Override
-    public AuthResult login(String email, String rawPassword) {
-        log.debug("Login attempt email={}", email);
-        User user = loadUserPort.findByEmail(email.toLowerCase())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
+    public AuthResult login(Email email, String rawPassword) {
+        if (rawPassword == null || rawPassword.isBlank()) throw new PasswordRequiredException();
 
-        if (!hasher.matches(rawPassword, user.getPasswordHash())) {
-            log.warn("Login failed (bad password) email={}", email);
-            throw new IllegalArgumentException("Invalid credentials");
+        log.debug("Login attempt email={}", email.getValue());
+
+        User user = loadUserPort.findByEmail(email)
+                .orElseThrow(InvalidCredentialsException::new);
+
+        if (!hasher.matches(rawPassword, user.passwordHash().getValue())) {
+            log.warn("Login failed (bad password) email={}", email.getValue());
+            throw new InvalidCredentialsException();
         }
 
-        if (!user.isEmailVerified())
-            throw new IllegalStateException("Email not verified"); // devuelve 403/401 desde un @ControllerAdvice
+        if (!user.emailVerified()) {
+            throw new EmailNotVerifiedException();
+        }
 
-        log.info("Login success email={}", email);
-        return new AuthResult(
-                tokens.generateAccessToken(user),
-                tokens.generateRefreshToken(user)
-        );
+        log.info("Login success email={}", email.getValue());
+        return new AuthResult(tokens.generateAccessToken(user), tokens.generateRefreshToken(user));
     }
+
 }

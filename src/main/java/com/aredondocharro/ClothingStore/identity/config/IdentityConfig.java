@@ -1,10 +1,10 @@
 package com.aredondocharro.ClothingStore.identity.config;
 
-import com.aredondocharro.ClothingStore.identity.adapter.out.crypto.BCryptPasswordHasherAdapter;
-import com.aredondocharro.ClothingStore.identity.adapter.out.jwt.JwtTokenGeneratorAdapter;
-import com.aredondocharro.ClothingStore.identity.adapter.out.jwt.JwtVerificationAdapter;
-import com.aredondocharro.ClothingStore.identity.adapter.out.persistence.UserJpaAdapter;
-import com.aredondocharro.ClothingStore.identity.adapter.out.persistence.repo.SpringDataUserRepository;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.crypto.BCryptPasswordHasherAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtTokenGeneratorAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtVerificationAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserJpaAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import com.aredondocharro.ClothingStore.identity.application.LoginService;
 import com.aredondocharro.ClothingStore.identity.application.RegisterUserService;
 import com.aredondocharro.ClothingStore.identity.application.VerifyEmailService;
@@ -52,7 +52,7 @@ public class IdentityConfig {
                                                    TokenGeneratorPort tokens,
                                                    SendEmailUseCase sendEmailUseCase,
                                                    @Value("${app.apiBaseUrl:http://localhost:8081}") String apiBaseUrl) {
-        var mailer = new com.aredondocharro.ClothingStore.identity.adapter.out.mail.MailerAdapter(sendEmailUseCase);
+        var mailer = new com.aredondocharro.ClothingStore.identity.infrastructure.out.mail.MailerAdapter(sendEmailUseCase);
         return new RegisterUserService(persistence, persistence, hasher, tokens, mailer, normalizeBase(apiBaseUrl));
     }
 
