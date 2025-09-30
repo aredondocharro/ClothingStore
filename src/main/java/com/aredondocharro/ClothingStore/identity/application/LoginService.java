@@ -42,7 +42,7 @@ public class LoginService implements LoginUseCase {
             throw new EmailNotVerifiedException();
         }
 
-        log.info("Login success email={}", LogSanitizer.askEmail(email.getValue()));
+        log.info("Login success email={}", LogSanitizer.maskEmail(email.getValue()));
         return new AuthResult(tokens.generateAccessToken(user), tokens.generateRefreshToken(user));
     }
 
