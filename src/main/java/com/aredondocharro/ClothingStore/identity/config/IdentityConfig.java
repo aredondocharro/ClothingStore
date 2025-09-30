@@ -3,6 +3,7 @@ package com.aredondocharro.ClothingStore.identity.config;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.crypto.BCryptPasswordHasherAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtTokenGeneratorAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtVerificationAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.mail.MailerAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserJpaAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import com.aredondocharro.ClothingStore.identity.application.LoginService;
@@ -28,16 +29,16 @@ public class IdentityConfig {
 
     @Bean
     TokenGeneratorPort tokenGenerator(@Value("${security.jwt.secret}") String secret,
-                                      @Value("${security.jwt.issuer:clothing-store}") String issuer,
-                                      @Value("${security.jwt.accessSeconds:900}") long accessSeconds,
-                                      @Value("${security.jwt.refreshSeconds:1209600}") long refreshSeconds,
-                                      @Value("${security.jwt.verificationSeconds:1800}") long verificationSeconds) {
+                                      @Value("${security.jwt.issuer}") String issuer,
+                                      @Value("${security.jwt.accessSeconds}") long accessSeconds,
+                                      @Value("${security.jwt.refreshSeconds}") long refreshSeconds,
+                                      @Value("${security.jwt.verificationSeconds}") long verificationSeconds) {
         return new JwtTokenGeneratorAdapter(secret, issuer, accessSeconds, refreshSeconds, verificationSeconds);
     }
 
     @Bean
     VerificationTokenPort verificationTokenPort(@Value("${security.jwt.secret}") String secret,
-                                                @Value("${security.jwt.issuer:clothing-store}") String issuer) {
+                                                @Value("${security.jwt.issuer}") String issuer) {
         return new JwtVerificationAdapter(secret, issuer);
     }
 
@@ -52,7 +53,7 @@ public class IdentityConfig {
                                                    TokenGeneratorPort tokens,
                                                    SendEmailUseCase sendEmailUseCase,
                                                    @Value("${app.apiBaseUrl:http://localhost:8081}") String apiBaseUrl) {
-        var mailer = new com.aredondocharro.ClothingStore.identity.infrastructure.out.mail.MailerAdapter(sendEmailUseCase);
+        MailerAdapter mailer = new MailerAdapter(sendEmailUseCase);
         return new RegisterUserService(persistence, persistence, hasher, tokens, mailer, normalizeBase(apiBaseUrl));
     }
 

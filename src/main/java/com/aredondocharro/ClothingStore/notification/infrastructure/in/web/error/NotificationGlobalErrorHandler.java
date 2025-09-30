@@ -1,5 +1,6 @@
 package com.aredondocharro.ClothingStore.notification.infrastructure.in.web.error;
 
+import com.aredondocharro.ClothingStore.notification.domain.exception.*;
 import com.aredondocharro.ClothingStore.notification.infrastructure.in.web.EmailController;
 import com.aredondocharro.ClothingStore.shared.web.ErrorResponse;
 import jakarta.mail.MessagingException;
@@ -29,6 +30,19 @@ public class NotificationGlobalErrorHandler {
         return build(HttpStatus.BAD_REQUEST, "notification.validation_error", "Validation failed", req, fields, ex, false);
     }
 
+    // 400 - falta asunto
+    @ExceptionHandler(SubjectRequiredException.class)
+    ResponseEntity<ErrorResponse> handleSubjectRequired(SubjectRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "notification.subject_required", ex.getMessage(), req, null, ex, false);
+    }
+
+    // 400 - falta cuerpo del mensaje
+    @ExceptionHandler(BodyRequiredException.class)
+    ResponseEntity<ErrorResponse> handleBodyRequired(BodyRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "notification.body_required", ex.getMessage(), req, null, ex, false);
+    }
+
+
     @ExceptionHandler({ HttpMessageNotReadableException.class, IllegalArgumentException.class })
     ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "notification.bad_request", ex.getMessage(), req, null, ex, false);
@@ -54,6 +68,34 @@ public class NotificationGlobalErrorHandler {
         return build(HttpStatus.BAD_GATEWAY, "notification.email_send_failed",
                 "Failed to send email", req, null, ex, true);
     }
+    // 400 - faltan destinatarios
+    @ExceptionHandler(RecipientsRequiredException.class)
+    ResponseEntity<ErrorResponse> handleRecipientsRequired(RecipientsRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "notification.recipients_required",
+                ex.getMessage(), req, null, ex, false);
+    }
+
+    // 400 - falta templateId
+    @ExceptionHandler(TemplateIdRequiredException.class)
+    ResponseEntity<ErrorResponse> handleTemplateIdRequired(TemplateIdRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "notification.template_id_required",
+                ex.getMessage(), req, null, ex, false);
+    }
+
+    // 400 - email inválido (desde VO EmailAddress)
+    @ExceptionHandler(InvalidEmailAddressException.class)
+    ResponseEntity<ErrorResponse> handleInvalidEmail(InvalidEmailAddressException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "notification.invalid_email",
+                ex.getMessage(), req, null, ex, false);
+    }
+
+    // 502 - fallo del proveedor de correo (dominio)
+    @ExceptionHandler(EmailSendFailedException.class)
+    ResponseEntity<ErrorResponse> handleEmailSendFailed(EmailSendFailedException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_GATEWAY, "notification.email_send_failed",
+                ex.getMessage(), req, null, ex, true);
+    }
+
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest req) {

@@ -12,6 +12,8 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherP
 import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import static com.aredondocharro.ClothingStore.shared.log.LogSanitizer.*;
+
 
 @Slf4j
 @RequiredArgsConstructor
@@ -31,7 +33,7 @@ public class LoginService implements LoginUseCase {
                 .orElseThrow(InvalidCredentialsException::new);
 
         if (!hasher.matches(rawPassword, user.passwordHash().getValue())) {
-            log.warn("Login failed (bad password) email={}", email.getValue());
+            log.warn("Login failed email (Bad password) ={}", maskEmail(email.getValue()));
             throw new InvalidCredentialsException();
         }
 
@@ -39,7 +41,7 @@ public class LoginService implements LoginUseCase {
             throw new EmailNotVerifiedException();
         }
 
-        log.info("Login success email={}", email.getValue());
+        log.info("Login success email={}", maskEmail(email.getValue()));
         return new AuthResult(tokens.generateAccessToken(user), tokens.generateRefreshToken(user));
     }
 

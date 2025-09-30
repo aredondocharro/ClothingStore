@@ -1,6 +1,7 @@
 package com.aredondocharro.ClothingStore.notificationsTEST.application;
 
 import com.aredondocharro.ClothingStore.notification.application.SendEmailService;
+import com.aredondocharro.ClothingStore.notification.domain.exception.InvalidEmailAddressException;
 import com.aredondocharro.ClothingStore.notification.domain.model.Email;
 import com.aredondocharro.ClothingStore.notification.domain.model.EmailAddress;
 import com.aredondocharro.ClothingStore.notification.domain.port.out.EmailSenderPort;
@@ -77,7 +78,7 @@ class SendEmailServiceTest {
     void invalid_recipient_throws_before_port_call() {
         var templateId = "tpl";
         // no debería llamar al renderer si el destinatario es inválido
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(InvalidEmailAddressException.class, () ->
                 service.send(null, List.of("bad-email"), templateId, Map.of(), Locale.getDefault())
         );
         verifyNoInteractions(renderer);

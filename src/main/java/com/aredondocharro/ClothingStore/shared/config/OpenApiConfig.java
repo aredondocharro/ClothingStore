@@ -1,4 +1,4 @@
-package com.aredondocharro.ClothingStore.config;
+package com.aredondocharro.ClothingStore.shared.config;
 
 
 import io.swagger.v3.oas.models.Components;

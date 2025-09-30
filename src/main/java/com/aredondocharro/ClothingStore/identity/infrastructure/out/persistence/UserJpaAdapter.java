@@ -15,6 +15,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static com.aredondocharro.ClothingStore.shared.log.LogSanitizer.maskEmail;
+
 @Slf4j
 @RequiredArgsConstructor
 public class UserJpaAdapter implements LoadUserPort, SaveUserPort {
@@ -37,7 +39,7 @@ public class UserJpaAdapter implements LoadUserPort, SaveUserPort {
         // Evita loggear datos sensibles (hash). Email está bien.
         log.debug("Saving user email={}", user.email().getValue());
         UserEntity saved = repo.save(toEntity(user));
-        log.info("User persisted id={} email={}", saved.getId(), saved.getEmail());
+        log.info("User persisted id={} email={}", saved.getId(), maskEmail(saved.getEmail()));
         return toDomain(saved);
     }
 

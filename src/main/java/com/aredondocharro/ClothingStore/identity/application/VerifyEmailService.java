@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
+import static com.aredondocharro.ClothingStore.shared.log.LogSanitizer.maskEmail;
+
 @Slf4j
 @RequiredArgsConstructor
 public class VerifyEmailService implements VerifyEmailUseCase {
@@ -30,7 +32,7 @@ public class VerifyEmailService implements VerifyEmailUseCase {
 
         if (!user.emailVerified()) {
             user = saveUserPort.save(user.verified());
-            log.info("User email verified id={} email={}", user.id(), user.email().getValue());
+            log.info("User email verified id={} email={}", user.id(), maskEmail(user.email().getValue()));
         } else {
             log.debug("User already verified id={}", user.id());
         }

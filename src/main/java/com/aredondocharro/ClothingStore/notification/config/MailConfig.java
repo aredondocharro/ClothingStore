@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.templatemode.TemplateMode;
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
@@ -17,7 +17,7 @@ public class MailConfig {
 
     @Bean(name = "emailTemplateResolver")
     public ClassLoaderTemplateResolver emailTemplateResolver(AppMailProperties props) {
-        var r = new ClassLoaderTemplateResolver();
+        ClassLoaderTemplateResolver r = new ClassLoaderTemplateResolver();
         r.setPrefix(props.getTemplatePrefix());   // p.ej. "templates/email/"
         r.setSuffix(props.getTemplateSuffix());   // p.ej. ".html"
         r.setTemplateMode(TemplateMode.HTML);
@@ -30,7 +30,7 @@ public class MailConfig {
 
     @Bean(name = "emailMessageSource")
     public MessageSource emailMessageSource() {
-        var ms = new org.springframework.context.support.ReloadableResourceBundleMessageSource();
+        ReloadableResourceBundleMessageSource ms = new ReloadableResourceBundleMessageSource();
         ms.setBasenames(
                 "classpath:i18n/messages",       // genérico si lo necesitas
                 "classpath:i18n/email-common",   // brand, footer, etc.
@@ -47,7 +47,7 @@ public class MailConfig {
     public SpringTemplateEngine emailTemplateEngine(
             @Qualifier("emailTemplateResolver") ClassLoaderTemplateResolver resolver,
             @Qualifier("emailMessageSource") MessageSource emailMessageSource) {
-        var engine = new SpringTemplateEngine();
+        SpringTemplateEngine engine = new SpringTemplateEngine();
         engine.setTemplateResolver(resolver);
         engine.setTemplateEngineMessageSource(emailMessageSource);
         return engine;

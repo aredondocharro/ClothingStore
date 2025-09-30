@@ -15,8 +15,11 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.SaveUserPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 
 import java.util.Set;
+
+import static com.aredondocharro.ClothingStore.shared.log.LogSanitizer.maskEmail;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -40,7 +43,7 @@ public class RegisterUserService implements RegisterUserUseCase {
 
         // Usuario ya existe → 409
         loadUserPort.findByEmail(email).ifPresent(u -> {
-            log.warn("Registration rejected: already exists email={}", email.getValue());
+            log.warn("Registration rejected: already exists email={}", maskEmail(email.getValue()));
             throw new EmailAlreadyExistException();
         });
 
@@ -64,7 +67,7 @@ public class RegisterUserService implements RegisterUserUseCase {
         String url = apiBaseUrl + "/auth/verify?token=" + verification;
         mailer.sendVerificationEmail(saved.email().getValue(), url);
 
-        log.info("User registered id={} email={}", saved.id(), saved.email().getValue());
+        log.info("User registered id={} email={}", saved.id(), maskEmail(saved.email().getValue()));
 
         // No auto-login: devolvemos AuthResult vacío (puedes cambiar esto si lo deseas)
         return new AuthResult(null, null);

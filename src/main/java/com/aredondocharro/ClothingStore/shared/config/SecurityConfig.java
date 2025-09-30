@@ -1,5 +1,5 @@
 // src/main/java/.../security/SecurityConfig.java
-package com.aredondocharro.ClothingStore.security;
+package com.aredondocharro.ClothingStore.shared.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

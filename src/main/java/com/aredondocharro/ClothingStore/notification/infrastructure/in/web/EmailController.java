@@ -24,7 +24,7 @@ public class EmailController {
     @Operation (summary = "Send an email", description = "Sends an email to the specified recipients.")
     @PostMapping
     public ResponseEntity<Void> send(@Valid @RequestBody SendEmailRequest req) {
-        var locale = req.locale() != null ? req.locale() : Locale.getDefault();
+        Locale locale = req.locale() != null ? req.locale() : Locale.getDefault();
         sendEmail.send(req.from(), req.to(), req.templateId(), req.model(), locale);
         log.debug("Email sent request processed");
         return ResponseEntity.accepted().build();

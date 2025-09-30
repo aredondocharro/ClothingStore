@@ -1,5 +1,6 @@
 package com.aredondocharro.ClothingStore.notificationsTEST.domain;
 
+import com.aredondocharro.ClothingStore.notification.domain.exception.InvalidEmailAddressException;
 import com.aredondocharro.ClothingStore.notification.domain.model.EmailAddress;
 import org.junit.jupiter.api.Test;
 
@@ -15,12 +16,12 @@ class EmailAddressTest {
 
     @Test
     void null_or_malformed_email_is_rejected() {
-        assertThrows(IllegalArgumentException.class, () -> new EmailAddress(null));
-        assertThrows(IllegalArgumentException.class, () -> new EmailAddress(""));
-        assertThrows(IllegalArgumentException.class, () -> new EmailAddress("no-at-symbol"));
-        assertThrows(IllegalArgumentException.class, () -> new EmailAddress("a@b"));
-        assertThrows(IllegalArgumentException.class, () -> new EmailAddress("a@b."));
-        assertThrows(IllegalArgumentException.class, () -> new EmailAddress("@domain.com"));
-        assertThrows(IllegalArgumentException.class, () -> new EmailAddress("name@ domain.com"));
+        assertThrows(InvalidEmailAddressException.class, () -> new EmailAddress(null));
+        assertThrows(InvalidEmailAddressException.class, () -> new EmailAddress(""));
+        assertThrows(InvalidEmailAddressException.class, () -> new EmailAddress("no-at-symbol"));
+        assertThrows(InvalidEmailAddressException.class, () -> new EmailAddress("a@b"));
+        assertThrows(InvalidEmailAddressException.class, () -> new EmailAddress("a@b."));
+        assertThrows(InvalidEmailAddressException.class, () -> new EmailAddress("@domain.com"));
+        assertThrows(InvalidEmailAddressException.class, () -> new EmailAddress("name@ domain.com"));
     }
 }
