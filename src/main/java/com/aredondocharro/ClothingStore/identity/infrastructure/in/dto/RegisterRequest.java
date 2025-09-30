@@ -14,9 +14,6 @@ import lombok.ToString;
 @Getter @Setter @ToString(exclude = {"password", "confirmPassword"})
 public class RegisterRequest {
 
-        @NotBlank
-        @Schema(example = "Alexander")
-        private String name;
 
         @NotBlank @Email
         @Schema(example = "user@example.com")
@@ -35,11 +32,11 @@ public class RegisterRequest {
         private String confirmPassword;
 
         @AssertTrue(message = "passwords do not match")
-        @Schema(hidden = true)
         public boolean isPasswordsMatch() {
-                return password != null
-                        && confirmPassword != null
-                        && password.equals(confirmPassword);
+                // si falta alguna, deja que fallen sus @NotBlank y NO dispares este error
+                if (password == null || confirmPassword == null) return true;
+                if (password.isBlank() || confirmPassword.isBlank()) return true;
+                return password.equals(confirmPassword);
         }
 }
 

@@ -42,7 +42,7 @@ public class AuthController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = RegisterRequest.class),
                             examples = @ExampleObject(
-                                    value = "{ \"email\": \"user@example.com\", \"password\": \"Secret123!\" }"
+                                    value = "{ \"email\": \"user@example.com\", \"password\": \"Secret123!\", \"confirmPassword\": \"Secret123!\" }"
                             )
                     )
             ),

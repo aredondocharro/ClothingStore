@@ -1,8 +1,8 @@
-// src/main/java/com/aredondocharro/ClothingStore/identity/adapter/out/jwt/JwtTokenGeneratorAdapter.java
 package com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorPort;
 import lombok.extern.slf4j.Slf4j;
@@ -29,39 +29,54 @@ public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
 
     @Override
     public String generateAccessToken(User u) {
+        Instant now = Instant.now();
+
+        // Mapea Set<Role> -> String[] (elige: "USER" o "ROLE_USER")
+        String[] roleNames = u.roles().stream()
+                .map(Role::name)                // o .map(r -> "ROLE_" + r.name())
+                .toArray(String[]::new);
+
         String token = JWT.create()
                 .withIssuer(issuer)
                 .withSubject(u.id().toString())
+                .withIssuedAt(Date.from(now))
+                .withExpiresAt(Date.from(now.plusSeconds(accessSeconds)))
                 .withClaim("email", u.email().getValue())
-                .withArrayClaim("roles", u.roles().toArray(new String[0]))
+                .withArrayClaim("roles", roleNames)     // ← ahora sí: String[]
                 .withClaim("type", "access")
-                .withExpiresAt(Date.from(Instant.now().plusSeconds(accessSeconds)))
                 .sign(alg);
+
         log.debug("Access token generated for userId={}", u.id());
         return token;
     }
 
     @Override
     public String generateRefreshToken(User u) {
+        Instant now = Instant.now();
         String token = JWT.create()
                 .withIssuer(issuer)
                 .withSubject(u.id().toString())
+                .withIssuedAt(Date.from(now))
+                .withExpiresAt(Date.from(now.plusSeconds(refreshSeconds)))
                 .withClaim("type", "refresh")
-                .withExpiresAt(Date.from(Instant.now().plusSeconds(refreshSeconds)))
                 .sign(alg);
+
         log.debug("Refresh token generated for userId={}", u.id());
         return token;
     }
 
     @Override
     public String generateVerificationToken(User u) {
+        Instant now = Instant.now();
         String token = JWT.create()
                 .withIssuer(issuer)
                 .withSubject(u.id().toString())
+                .withIssuedAt(Date.from(now))
+                .withExpiresAt(Date.from(now.plusSeconds(verificationSeconds)))
                 .withClaim("email", u.email().getValue())
                 .withClaim("type", "verify")
-                .withExpiresAt(Date.from(Instant.now().plusSeconds(verificationSeconds)))
                 .sign(alg);
+
         log.debug("Verification token generated for userId={}", u.id());
         return token;
     }
