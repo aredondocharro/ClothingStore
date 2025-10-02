@@ -1,27 +1,28 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.in.web;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.Email; // <-- VO correcto
+import com.aredondocharro.ClothingStore.identity.domain.model.Email; // VO correcto
+import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.LoginUseCase;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.RegisterUserUseCase;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.VerifyEmailUseCase;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.AuthResponse;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.LoginRequest;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.MessageResponse;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.RegisterRequest;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.LoginUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.RegisterUserUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.VerifyEmailUseCase;
+import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
-
 
 @Slf4j
 @RestController
@@ -33,7 +34,7 @@ public class AuthController {
     private final RegisterUserUseCase registerUC;
     private final LoginUseCase loginUC;
     private final VerifyEmailUseCase verifyUC;
-
+    private final RefreshCookieManager cookieManager; // Gestor de cookie HttpOnly para refresh
 
     @Operation(
             summary = "Register a new user (email verification required)",
@@ -59,10 +60,10 @@ public class AuthController {
     )
     @PostMapping(path = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<MessageResponse> register(@Valid @RequestBody RegisterRequest req) {
-        final Email emailVO = Email.of(req.getEmail()); // <-- convertir String -> VO
+        final Email emailVO = Email.of(req.getEmail()); // convertir String -> VO
         log.debug("POST /auth/register email={}", emailVO.getValue());
 
-        registerUC.register(emailVO, req.getPassword()); // <-- usar VO en el use case
+        registerUC.register(emailVO, req.getPassword());
 
         log.info("Registration accepted for email={}", LogSanitizer.maskEmail(emailVO.getValue()));
         return ResponseEntity.accepted()
@@ -71,7 +72,8 @@ public class AuthController {
 
     @Operation(
             summary = "Verify email (autologin)",
-            description = "Validates the verification token and activates the account. If valid, returns JWT tokens.",
+            description = "Validates the verification token and activates the account. If valid, issues tokens: " +
+                    "sets refresh as HttpOnly cookie and returns access in response body.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Email verified",
                             content = @Content(schema = @Schema(implementation = AuthResponse.class))),
@@ -80,15 +82,20 @@ public class AuthController {
             }
     )
     @GetMapping("/verify")
-    public ResponseEntity<AuthResponse> verify(@RequestParam("token") String token) {
+    public ResponseEntity<AuthResponse> verify(@RequestParam("token") String token,
+                                               HttpServletResponse res) {
         log.debug("GET /auth/verify");
-        var result = verifyUC.verify(token); // <-- sin cambios
-        log.info("Verification completed (autologin)");
-        return ResponseEntity.ok(new AuthResponse(result.accessToken(), result.refreshToken()));
+        AuthResult result = verifyUC.verify(token);
+        // Seteamos cookie HttpOnly con el refresh (persistido en BD)
+        cookieManager.setCookie(res, result.refreshToken());
+        log.info("Verification completed (autologin) -> refresh cookie set");
+        // En el body devolvemos solo el access token
+        return ResponseEntity.ok(new AuthResponse(result.accessToken(), null));
     }
 
     @Operation(
             summary = "Login with email and password",
+            description = "Authenticates user. Sets refresh as HttpOnly cookie and returns access in the response body.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Authenticated",
                             content = @Content(schema = @Schema(implementation = AuthResponse.class))),
@@ -99,11 +106,20 @@ public class AuthController {
             }
     )
     @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
-        final Email emailVO = Email.of(req.email()); // <-- convertir String -> VO
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req,
+                                              HttpServletResponse res) {
+        final Email emailVO = Email.of(req.email()); // convertir String -> VO (ajusta si tu DTO usa getters)
         log.debug("POST /auth/login email={}", emailVO.getValue());
-        var result = loginUC.login(emailVO, req.password()); // <-- usar VO en el use case
+
+        AuthResult result = loginUC.login(emailVO, req.password());
+
+        // Seteamos cookie HttpOnly con el refresh (persistido en BD)
+        log.info("Setting refresh cookie, len={}",
+                result.refreshToken() != null ? result.refreshToken().length() : 0);
+        cookieManager.setCookie(res, result.refreshToken());
+
         log.info("Login success email={}", LogSanitizer.maskEmail(emailVO.getValue()));
-        return ResponseEntity.ok(new AuthResponse(result.accessToken(), result.refreshToken()));
+        // En el body devolvemos solo el access token
+        return ResponseEntity.ok(new AuthResponse(result.accessToken(), null));
     }
 }

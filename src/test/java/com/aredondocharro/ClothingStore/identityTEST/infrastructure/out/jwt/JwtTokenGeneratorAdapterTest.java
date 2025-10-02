@@ -99,4 +99,23 @@ class JwtTokenGeneratorAdapterTest {
         assertEquals("verify", decoded.getClaim("type").asString());
         assertEquals("user@example.com", decoded.getClaim("email").asString());
     }
+
+    @Test
+    void refreshToken_containsIssuerSubjectTypeAndJti() {
+        var adapter = new JwtTokenGeneratorAdapter(SECRET, ISSUER, ACCESS_SEC, REFRESH_SEC, VERIFY_SEC);
+        var user = makeUser(Set.of(Role.USER));
+
+        var token = adapter.generateRefreshToken(user);
+
+        var verifier = JWT.require(Algorithm.HMAC256(SECRET)).withIssuer(ISSUER).withClaim("type", "refresh").build();
+        var decoded = verifier.verify(token);
+
+        assertEquals(user.id().toString(), decoded.getSubject());
+        assertEquals("refresh", decoded.getClaim("type").asString());
+
+        // NEW: ensure JTI is present
+        assertNotNull(decoded.getId());
+        assertFalse(decoded.getId().isBlank());
+    }
+
 }

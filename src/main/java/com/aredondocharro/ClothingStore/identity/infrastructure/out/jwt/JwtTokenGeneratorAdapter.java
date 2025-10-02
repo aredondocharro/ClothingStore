@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 @Slf4j
 public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
@@ -58,6 +59,7 @@ public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
                 .withSubject(u.id().toString())
                 .withIssuedAt(Date.from(now))
                 .withExpiresAt(Date.from(now.plusSeconds(refreshSeconds)))
+                .withJWTId(UUID.randomUUID().toString())
                 .withClaim("type", "refresh")
                 .sign(alg);
 

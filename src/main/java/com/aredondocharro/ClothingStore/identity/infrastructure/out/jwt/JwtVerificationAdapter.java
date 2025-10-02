@@ -2,6 +2,7 @@ package com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.VerificationTokenPort;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,7 @@ public class JwtVerificationAdapter implements VerificationTokenPort {
 
     @Override
     public UUID validateAndExtractUserId(String verificationToken) {
-        var decoded = verifier.verify(verificationToken); // lanza si es inválido/expirado
+        DecodedJWT decoded = verifier.verify(verificationToken); // lanza si es inválido/expirado
         String sub = decoded.getSubject();
         UUID userId = UUID.fromString(sub);
         log.debug("Verification token valid for userId={}", userId);
