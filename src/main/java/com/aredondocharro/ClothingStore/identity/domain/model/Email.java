@@ -22,7 +22,7 @@ public final class Email {
 
     public static Email of(String raw) {
         if (raw == null || raw.isBlank()) throw new EmailRequiredException();
-        var v = raw.trim().toLowerCase();
+        String v = raw.trim().toLowerCase();
         if (!P.matcher(v).matches()) throw new InvalidEmailFormatException(raw + " is not a valid email");
         return new Email(v);
     }

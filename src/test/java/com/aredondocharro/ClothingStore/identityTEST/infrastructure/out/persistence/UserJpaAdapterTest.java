@@ -4,7 +4,7 @@ import com.aredondocharro.ClothingStore.identity.domain.model.Email;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserJpaAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserPersistenceAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.UserEntity;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import org.junit.jupiter.api.Test;
@@ -14,11 +14,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class UserJpaAdapterTest {
@@ -31,9 +36,9 @@ class UserJpaAdapterTest {
 
     @Test
     void save_mapsDomainRolesToStrings_andReturnsDomainWithSameRoles() {
-        var adapter = new UserJpaAdapter(repo);
+        UserPersistenceAdapter adapter = new UserPersistenceAdapter(repo);
 
-        var domain = new User(
+        User domain = new User(
                 null, // id nulo: el adapter lo rellenará
                 Email.of("user@example.com"),
                 PasswordHash.ofHashed(BCRYPT),
@@ -45,12 +50,12 @@ class UserJpaAdapterTest {
         // repo.save devuelve lo que recibe (simulamos persistencia)
         when(repo.save(any(UserEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        var saved = adapter.save(domain);
+        User saved = adapter.save(domain);
 
         // Verifica que el adapter pasó strings "USER","ADMIN" al entity
         ArgumentCaptor<UserEntity> cap = ArgumentCaptor.forClass(UserEntity.class);
         verify(repo).save(cap.capture());
-        var entity = cap.getValue();
+        UserEntity entity = cap.getValue();
         assertNotNull(entity.getId(), "adapter should set id if null");
         assertTrue(entity.getRoles().containsAll(Set.of("USER", "ADMIN")));
 
@@ -61,10 +66,10 @@ class UserJpaAdapterTest {
 
     @Test
     void findById_nullRoles_defaultsToUser() {
-        var adapter = new UserJpaAdapter(repo);
-        var id = UUID.randomUUID();
+        UserPersistenceAdapter adapter = new UserPersistenceAdapter(repo);
+        UUID id = UUID.randomUUID();
 
-        var entity = UserEntity.builder()
+        UserEntity entity = UserEntity.builder()
                 .id(id)
                 .email("u@example.com")
                 .passwordHash(BCRYPT)
@@ -75,13 +80,13 @@ class UserJpaAdapterTest {
 
         when(repo.findById(id)).thenReturn(Optional.of(entity));
 
-        var user = adapter.findById(id).orElseThrow();
-        assertEquals(java.util.Set.of(Role.USER), user.roles()); // ← default
+        User user = adapter.findById(id).orElseThrow();
+        assertEquals(Set.of(Role.USER), user.roles()); // ← default
     }
 
     @Test
     void findByEmail_mapsEntityToDomain() {
-        UserJpaAdapter adapter = new UserJpaAdapter(repo);
+        UserPersistenceAdapter adapter = new UserPersistenceAdapter(repo);
         UUID id = UUID.randomUUID();
 
         UserEntity entity = UserEntity.builder()
@@ -93,7 +98,7 @@ class UserJpaAdapterTest {
                 .createdAt(Instant.now())
                 .build();
 
-        when(repo.findByEmail("u@example.com")).thenReturn(Optional.of(entity));
+        when(repo.findByEmailIgnoreCase("u@example.com")).thenReturn(Optional.of(entity));
 
         Optional<User> opt = adapter.findByEmail(Email.of("u@example.com"));
         assertTrue(opt.isPresent());

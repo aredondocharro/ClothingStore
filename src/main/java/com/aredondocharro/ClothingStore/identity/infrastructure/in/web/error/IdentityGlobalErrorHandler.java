@@ -92,7 +92,7 @@ public class IdentityGlobalErrorHandler {
     // 400 - Violaciones de validación en @PathVariable/@RequestParam
     @ExceptionHandler(ConstraintViolationException.class)
     ResponseEntity<ErrorResponse> handleConstraintViolation(jakarta.validation.ConstraintViolationException ex, HttpServletRequest req) {
-        var fields = ex.getConstraintViolations().stream().map(v -> new ErrorResponse.FieldError(v.getPropertyPath().toString(), v.getMessage())).toList();
+        List<ErrorResponse.FieldError> fields = ex.getConstraintViolations().stream().map(v -> new ErrorResponse.FieldError(v.getPropertyPath().toString(), v.getMessage())).toList();
         return build(HttpStatus.BAD_REQUEST, "validation.error", "Validation failed", req, fields, ex, false);
     }
 

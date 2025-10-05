@@ -29,7 +29,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final PasswordHasherPort hasher;
     private final TokenGeneratorPort tokens;
     private final MailerPort mailer;
-    private final String apiBaseUrl;
+    private final String verifyBaseUrl;
 
     @Override
     public AuthResult register(Email email, String rawPassword) {
@@ -60,10 +60,9 @@ public class RegisterUserService implements RegisterUserUseCase {
                 null
         );
         User saved = saveUserPort.save(toSave);
-
         // Generar token de verificación y enviar email
         String verification = tokens.generateVerificationToken(saved);
-        String url = apiBaseUrl + "/auth/verify?token=" + verification;
+        String url = verifyBaseUrl + "?token=" + verification;
         mailer.sendVerificationEmail(saved.email().getValue(), url);
 
         log.info("User registered id={} email={}", saved.id(), LogSanitizer.maskEmail(saved.email().getValue()));

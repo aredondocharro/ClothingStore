@@ -15,6 +15,7 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorP
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -77,11 +78,11 @@ class RegisterServiceTest {
 
         when(loadUserPort.findByEmail(email)).thenReturn(Optional.empty());
 
-        // Hash bcrypt válido (60 chars) para que pase PasswordHash.ofHashed(...)
+        // Hash bcrypt válido (60 chars)
         var bcrypt = "$2b$10$7EqJtq98hPqEX7fNZaFWoO5f.Pg3rQAYyu3iJ/T9Y2aXx1Z9E6iGa";
         when(hasher.hash(rawPassword)).thenReturn(bcrypt);
 
-        // save devuelve el mismo User que recibe (para no depender del constructor exacto)
+        // save devuelve el mismo User que recibe
         when(saveUserPort.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0, User.class));
 
         var token = "verification-token-123";
@@ -89,7 +90,7 @@ class RegisterServiceTest {
 
         AuthResult result = service.register(email, rawPassword);
 
-        // resultado (tu servicio devuelve null/null por diseño)
+        // resultado
         assertNotNull(result);
         assertNull(result.accessToken());
         assertNull(result.refreshToken());
@@ -104,9 +105,25 @@ class RegisterServiceTest {
                         && u.roles().contains(Role.USER)
         ));
         inOrder.verify(tokens).generateVerificationToken(any(User.class));
-        inOrder.verify(mailer).sendVerificationEmail(eq(email.getValue()),
-                eq(apiBaseUrl + "/auth/verify?token=" + token));
+
+        // capturamos argumentos del mailer para no depender de la forma exacta del link
+        var toCap = ArgumentCaptor.forClass(String.class);
+        var linkCap = ArgumentCaptor.forClass(String.class);
+        inOrder.verify(mailer).sendVerificationEmail(toCap.capture(), linkCap.capture());
         inOrder.verifyNoMoreInteractions();
+
+        assertEquals(email.getValue(), toCap.getValue());
+
+        String link = linkCap.getValue();
+        // Debe empezar por el base URL que recibe el servicio (verifyBaseUrl / apiBaseUrl en tu test)
+        assertTrue(link.startsWith(apiBaseUrl), "verification link must start with the configured base URL");
+        // Debe incluir el token (en claro o URL-encoded)
+        assertTrue(
+                link.contains("token=" + token) ||
+                        link.contains("token=" + java.net.URLEncoder.encode(token, java.nio.charset.StandardCharsets.UTF_8)),
+                "verification link must include the token query param"
+        );
     }
+
 }
 

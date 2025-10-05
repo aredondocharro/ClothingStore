@@ -2,11 +2,12 @@ package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence
 
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
 
-public interface SpringDataUserRepository extends JpaRepository<UserEntity, UUID> {
+@Repository
+public interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
     Optional<UserEntity> findByEmailIgnoreCase(String email);
-    // findById(UUID id) ya lo da JpaRepository
 }

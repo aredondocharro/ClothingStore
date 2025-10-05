@@ -8,32 +8,46 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.SaveUserPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.UserEntity;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
-import lombok.RequiredArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.aredondocharro.ClothingStore.shared.log.LogSanitizer.maskEmail;
 
 @Slf4j
-@RequiredArgsConstructor
-public class UserJpaAdapter implements LoadUserPort, SaveUserPort {
+@AllArgsConstructor
+public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
 
     private final SpringDataUserRepository repo;
 
+    // ---------------------------------------------------------------------
+    // API adicional usado por tests / casos de uso (no necesariamente @Override)
+    // ---------------------------------------------------------------------
     public Optional<User> findByEmail(Email email) {
         log.debug("Finding user by email={}", email.getValue());
-        return repo.findByEmail(email.getValue()).map(this::toDomain);
+        return repo.findByEmailIgnoreCase(email.getValue()).map(this::toDomain);
     }
 
+    // ---------------------------------------------------------------------
+    // LoadUserPort
+    // ---------------------------------------------------------------------
     @Override
     public Optional<User> findById(UUID id) {
         log.debug("Finding user by id={}", id);
         return repo.findById(id).map(this::toDomain);
     }
 
+    // ---------------------------------------------------------------------
+    // SaveUserPort
+    // ---------------------------------------------------------------------
     @Override
+    @Transactional
     public User save(User user) {
         log.debug("Saving user email={}", user.email().getValue());
         UserEntity saved = repo.save(toEntity(user));
@@ -45,8 +59,12 @@ public class UserJpaAdapter implements LoadUserPort, SaveUserPort {
     /* ===================== MAPPING ===================== */
 
     private User toDomain(UserEntity e) {
-        var roleStrings = (e.getRoles() == null) ? java.util.Set.<String>of() : e.getRoles();
-        var roles = roleStrings.stream().map(Role::from).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        Set<String> roleStrings = (e.getRoles() == null) ? Set.of() : e.getRoles();
+        // Si BD trae null o vacío, por defecto Role.USER
+        Set<Role> roles = roleStrings.isEmpty()
+                ? Set.of(Role.USER)
+                : roleStrings.stream().map(Role::from).collect(Collectors.toUnmodifiableSet());
+
         return new User(
                 e.getId(),
                 Email.of(e.getEmail()),
@@ -58,13 +76,20 @@ public class UserJpaAdapter implements LoadUserPort, SaveUserPort {
     }
 
     private UserEntity toEntity(User u) {
+        Set<String> roles = (u.roles() == null || u.roles().isEmpty())
+                ? Set.of(Role.USER.name())
+                : u.roles().stream().map(Role::name).collect(Collectors.toSet());
+
+        UUID id = (u.id() != null) ? u.id() : UUID.randomUUID();
+        Instant createdAt = (u.createdAt() != null) ? u.createdAt() : Instant.now();
+
         return UserEntity.builder()
-                .id(u.id()) // @PrePersist lo rellena si es null
+                .id(id) // si prefieres @PrePersist, puedes dejar null y que JPA lo rellene
                 .email(u.email().getValue())
                 .passwordHash(u.passwordHash().getValue())
                 .emailVerified(u.emailVerified())
-                .roles(u.roles().stream().map(Role::name).collect(java.util.stream.Collectors.toSet()))
-                .createdAt(u.createdAt()) // @PrePersist si es null
+                .roles(roles)
+                .createdAt(createdAt)
                 .build();
     }
 }
