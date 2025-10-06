@@ -1,9 +1,9 @@
 package com.aredondocharro.ClothingStore.notificationsTEST.infrastructure.out.smtp;
 
 
+import com.aredondocharro.ClothingStore.notification.domain.model.EmailMessage;
 import com.aredondocharro.ClothingStore.notification.infrastructure.out.smtp.SmtpEmailSenderAdapter;
-import com.aredondocharro.ClothingStore.notification.config.AppMailProperties;
-import com.aredondocharro.ClothingStore.notification.domain.model.Email;
+import com.aredondocharro.ClothingStore.notification.infrastructure.config.AppMailProperties;
 import com.aredondocharro.ClothingStore.notification.domain.model.EmailAddress;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
@@ -19,7 +19,7 @@ import java.util.Properties;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-class SmtpEmailSenderAdapterTest {
+class SmtpEmailMessageSenderAdapterTest {
 
     JavaMailSender mailSender;
     AppMailProperties props;
@@ -40,10 +40,10 @@ class SmtpEmailSenderAdapterTest {
         ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
         doNothing().when(mailSender).send(captor.capture());
 
-        Email email = new Email(null, List.of(new EmailAddress("to@x.com")), "S", "B", false);
+        EmailMessage emailMessage = new EmailMessage(null, List.of(new EmailAddress("to@x.com")), "S", "B", false);
 
         // Act
-        adapter.send(email);
+        adapter.send(emailMessage);
 
         // Assert
         SimpleMailMessage msg = captor.getValue();
@@ -60,10 +60,10 @@ class SmtpEmailSenderAdapterTest {
         MimeMessage mime = new MimeMessage(Session.getDefaultInstance(new Properties()));
         when(mailSender.createMimeMessage()).thenReturn(mime);
 
-        Email email = new Email(new EmailAddress("from@me.com"), List.of(new EmailAddress("to@x.com")), "S", "<b>B</b>", true);
+        EmailMessage emailMessage = new EmailMessage(new EmailAddress("from@me.com"), List.of(new EmailAddress("to@x.com")), "S", "<b>B</b>", true);
 
         // Act
-        adapter.send(email);
+        adapter.send(emailMessage);
 
         // Assert: fields are set on MimeMessage
         assertThat(mime.getSubject()).isEqualTo("S");

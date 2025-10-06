@@ -15,7 +15,7 @@
 	<artifactId>ClothingStore</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>ClothingStore</name>
-	<description>Clothing store with payment gateway, email sender and security</description>
+	<description>Clothing store with payment gateway, emailMessage sender and security</description>
 
 	<properties>
 		<java.version>21</java.version>

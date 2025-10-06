@@ -1,6 +1,6 @@
 package com.aredondocharro.ClothingStore.notification.application;
 
-import com.aredondocharro.ClothingStore.notification.domain.model.Email;
+import com.aredondocharro.ClothingStore.notification.domain.model.EmailMessage;
 import com.aredondocharro.ClothingStore.notification.domain.model.EmailAddress;
 import com.aredondocharro.ClothingStore.notification.domain.port.in.SendEmailUseCase;
 import com.aredondocharro.ClothingStore.notification.domain.port.out.EmailSenderPort;
@@ -47,11 +47,11 @@ public class SendEmailService implements SendEmailUseCase {
         // Renderizado (si el puerto lanza TemplateNotFound/RenderException, dejar pasar)
         TemplateRendererPort.RenderedEmail rendered = renderer.render(templateId, safeModel, loc);
 
-        Email email = new Email(from, recipients, rendered.subject(), rendered.bodyHtml(), true);
+        EmailMessage emailMessage = new EmailMessage(from, recipients, rendered.subject(), rendered.bodyHtml(), true);
 
         // 3) Mapea errores del provider a excepción de dominio
         try {
-            emailSender.send(email);
+            emailSender.send(emailMessage);
         } catch (Exception e) {
             // Evita filtrar PII en el mensaje
             throw new EmailSendFailedException("email send failed", e);

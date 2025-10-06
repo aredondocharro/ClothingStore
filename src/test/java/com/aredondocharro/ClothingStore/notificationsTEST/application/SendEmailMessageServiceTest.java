@@ -2,7 +2,7 @@ package com.aredondocharro.ClothingStore.notificationsTEST.application;
 
 import com.aredondocharro.ClothingStore.notification.application.SendEmailService;
 import com.aredondocharro.ClothingStore.notification.domain.exception.InvalidEmailAddressException;
-import com.aredondocharro.ClothingStore.notification.domain.model.Email;
+import com.aredondocharro.ClothingStore.notification.domain.model.EmailMessage;
 import com.aredondocharro.ClothingStore.notification.domain.model.EmailAddress;
 import com.aredondocharro.ClothingStore.notification.domain.port.out.EmailSenderPort;
 import com.aredondocharro.ClothingStore.notification.domain.port.out.TemplateRendererPort;
@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class SendEmailServiceTest {
+class SendEmailMessageServiceTest {
 
     private TemplateRendererPort renderer;
     private EmailSenderPort emailSender;
@@ -45,9 +45,9 @@ class SendEmailServiceTest {
         service.send("from@me.com", List.of("to@you.com"), templateId, model, Locale.ENGLISH);
 
         // then
-        ArgumentCaptor<Email> captor = ArgumentCaptor.forClass(Email.class);
+        ArgumentCaptor<EmailMessage> captor = ArgumentCaptor.forClass(EmailMessage.class);
         verify(emailSender, times(1)).send(captor.capture());
-        Email e = captor.getValue();
+        EmailMessage e = captor.getValue();
 
         assertThat(e.from()).extracting(EmailAddress::value).isEqualTo("from@me.com");
         assertThat(e.to()).extracting(EmailAddress::value).containsExactly("to@you.com");
@@ -66,7 +66,7 @@ class SendEmailServiceTest {
         service.send(null, List.of("a@b.com"), templateId, Map.of(), Locale.getDefault());
         service.send("   ", List.of("a@b.com"), templateId, Map.of(), Locale.getDefault());
 
-        ArgumentCaptor<Email> captor = ArgumentCaptor.forClass(Email.class);
+        ArgumentCaptor<EmailMessage> captor = ArgumentCaptor.forClass(EmailMessage.class);
         verify(emailSender, times(2)).send(captor.capture());
         assertThat(captor.getAllValues()).allSatisfy(e -> {
             assertThat(e.from()).isNull();

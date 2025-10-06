@@ -1,7 +1,10 @@
 package com.aredondocharro.ClothingStore.identityTEST.integration.application;
 
 import com.aredondocharro.ClothingStore.TestcontainersConfiguration;
-import com.aredondocharro.ClothingStore.identity.application.PasswordRecoveryService;
+import com.aredondocharro.ClothingStore.identity.application.RequestPasswordResetService;
+import com.aredondocharro.ClothingStore.identity.application.ResetPasswordService;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.RequestPasswordResetUseCase;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.ResetPasswordUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.MailerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
@@ -10,12 +13,16 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.SessionManagerP
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.PasswordResetTokenRepositoryAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpa;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -25,8 +32,9 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
-import java.util.*;
 import java.util.Base64;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
@@ -39,7 +47,7 @@ import static org.mockito.Mockito.*;
 @Import({
         TestcontainersConfiguration.class,
         PasswordResetTokenRepositoryAdapter.class,
-        PasswordRecoveryService.class
+        PasswordRecoveryServiceIT.TestBeans.class // <<-- Beans de los nuevos servicios
 })
 class PasswordRecoveryServiceIT {
 
@@ -51,11 +59,10 @@ class PasswordRecoveryServiceIT {
     @MockBean private PasswordHasherPort passwordHasher;
     @MockBean private MailerPort mailer;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private PasswordRecoveryService service;
+    @Autowired private RequestPasswordResetUseCase requestPasswordResetService;
+    @Autowired private ResetPasswordUseCase resetPasswordService;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private SpringPasswordResetTokenJpa jpa;
+    @Autowired private SpringPasswordResetTokenJpa jpa;
 
     @Test
     void requestReset_persistsToken_andEmailsLink() throws Exception {
@@ -70,7 +77,7 @@ class PasswordRecoveryServiceIT {
         ArgumentCaptor<String> linkCap = ArgumentCaptor.forClass(String.class);
 
         // act
-        service.requestReset(email);
+        requestPasswordResetService.requestReset(email);
 
         // assert (email enviado)
         verify(mailer).sendPasswordResetLink(emailCap.capture(), linkCap.capture());
@@ -78,7 +85,7 @@ class PasswordRecoveryServiceIT {
         String link = linkCap.getValue();
         assertTrue(link.startsWith(TEST_BASE_URL), "Reset link should start with baseUrl");
 
-        // extrae de forma robusta el query param 'token'
+        // extrae el query param 'token'
         String rawTokenParam = getQueryParam(link, "token");
         assertNotNull(rawTokenParam, "token query param must exist");
         assertFalse(rawTokenParam.isBlank(), "token query param must not be blank");
@@ -88,7 +95,7 @@ class PasswordRecoveryServiceIT {
 
         // verifica que hay un token válido para ese usuario (sin duplicar la lógica de hash)
         Instant now = Instant.now();
-        var all = jpa.findAll(); // JpaRepository#findAll
+        var all = jpa.findAll();
         boolean hasValidTokenForUser = all.stream().anyMatch(t ->
                 userId.equals(t.getUserId())
                         && t.getUsedAt() == null
@@ -97,7 +104,6 @@ class PasswordRecoveryServiceIT {
 
         assertTrue(hasValidTokenForUser, "Token should be stored for the user and be valid (unused and not expired)");
 
-
         String rawToken = URLDecoder.decode(rawTokenParam, StandardCharsets.UTF_8);
         String b64 = sha256Base64(rawToken);
         String b64Url = sha256Base64UrlNoPad(rawToken);
@@ -105,11 +111,10 @@ class PasswordRecoveryServiceIT {
 
         boolean byHashMatches =
                 jpa.findByTokenHashAndExpiresAtAfterAndUsedAtIsNull(b64, now).isPresent()
-                || jpa.findByTokenHashAndExpiresAtAfterAndUsedAtIsNull(b64Url, now).isPresent()
-                || jpa.findByTokenHashAndExpiresAtAfterAndUsedAtIsNull(hex, now).isPresent();
+                        || jpa.findByTokenHashAndExpiresAtAfterAndUsedAtIsNull(b64Url, now).isPresent()
+                        || jpa.findByTokenHashAndExpiresAtAfterAndUsedAtIsNull(hex, now).isPresent();
 
         assertTrue(byHashMatches, "DB should contain a valid token matching the link's token hash");
-
     }
 
     @Test
@@ -119,10 +124,11 @@ class PasswordRecoveryServiceIT {
         String newPassword = "NewPass123!";
         String newHash = "HASHED";
 
-        String tokenHash = sha256Base64(rawToken); // usa el mismo formato que tu servicio
+        String tokenHash = sha256Base64(rawToken); // mismo formato que el servicio
         PasswordResetTokenRepositoryPort.Token token =
                 new PasswordResetTokenRepositoryPort.Token(
-                        UUID.randomUUID(), userId, tokenHash, Instant.now().plusSeconds(1800), null, Instant.now()
+                        UUID.randomUUID(), userId, tokenHash,
+                        Instant.now().plusSeconds(1800), null, Instant.now()
                 );
 
         // Persistimos token real en DB (adapter real)
@@ -134,7 +140,7 @@ class PasswordRecoveryServiceIT {
         )));
         when(passwordHasher.hash(newPassword)).thenReturn(newHash);
 
-        service.reset(rawToken, newPassword);
+        resetPasswordService.reset(rawToken, newPassword);
 
         verify(passwordPolicy).validate(eq(newPassword));
         verify(users).updatePasswordHash(eq(userId), eq(newHash));
@@ -144,6 +150,28 @@ class PasswordRecoveryServiceIT {
         assertTrue(
                 jpa.findByTokenHashAndExpiresAtAfterAndUsedAtIsNull(tokenHash, Instant.now()).isEmpty()
         );
+    }
+
+    // ----------------- Beans de test (wiring de servicios refactorizados) -----------------
+    @TestConfiguration
+    static class TestBeans {
+
+        @Bean
+        RequestPasswordResetUseCase requestPasswordResetUseCase(UserRepositoryPort users,
+                                                                PasswordResetTokenRepositoryPort tokens,
+                                                                MailerPort mailer,
+                                                                @Value("${app.reset.baseUrl}") String baseUrl) {
+            return new RequestPasswordResetService(users, tokens, mailer, baseUrl);
+        }
+
+        @Bean
+        ResetPasswordUseCase resetPasswordUseCase(PasswordResetTokenRepositoryPort tokens,
+                                                  PasswordPolicyPort passwordPolicy,
+                                                  UserRepositoryPort users,
+                                                  PasswordHasherPort passwordHasher,
+                                                  SessionManagerPort sessions) {
+            return new ResetPasswordService(tokens, passwordPolicy, users, passwordHasher, sessions);
+        }
     }
 
     // ----------------- helpers -----------------

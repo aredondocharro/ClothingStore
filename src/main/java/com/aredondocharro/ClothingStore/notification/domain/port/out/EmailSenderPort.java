@@ -1,8 +1,8 @@
 package com.aredondocharro.ClothingStore.notification.domain.port.out;
 
 
-import com.aredondocharro.ClothingStore.notification.domain.model.Email;
+import com.aredondocharro.ClothingStore.notification.domain.model.EmailMessage;
 
 public interface EmailSenderPort {
-    void send(Email email);
+    void send(EmailMessage emailMessage);
 }

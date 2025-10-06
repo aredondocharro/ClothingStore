@@ -32,7 +32,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class VerifyEmailServiceTest {
+class VerifyEmailMessageServiceTest {
 
     @Mock VerificationTokenPort verifier;
     @Mock LoadUserPort loadUserPort;

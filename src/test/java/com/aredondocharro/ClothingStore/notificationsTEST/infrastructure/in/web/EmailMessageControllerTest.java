@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = EmailController.class)
-class EmailControllerTest {
+class EmailMessageControllerTest {
 
     @Autowired
     MockMvc mvc;
@@ -35,8 +35,8 @@ class EmailControllerTest {
     {
       "from": "me@example.com",
       "to": ["you@example.com"],
-      "templateId": "verify-email",
-      "model": { "verificationUrl": "http://x", "email": "you@example.com" },
+      "templateId": "verify-emailMessage",
+      "model": { "verificationUrl": "http://x", "emailMessage": "you@example.com" },
       "locale": "en"
     }
     """;
@@ -52,7 +52,7 @@ class EmailControllerTest {
         Mockito.verify(useCase).send(
                 eq("me@example.com"),
                 eq(List.of("you@example.com")),
-                eq("verify-email"),
+                eq("verify-emailMessage"),
                 anyMap(),
                 any()
         );

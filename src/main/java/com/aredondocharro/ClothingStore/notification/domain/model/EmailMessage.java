@@ -8,8 +8,8 @@ import com.aredondocharro.ClothingStore.notification.domain.exception.InvalidEma
 import java.util.List;
 import java.util.Objects;
 
-public record Email(EmailAddress from, List<EmailAddress> to, String subject, String body, boolean html) {
-    public Email {
+public record EmailMessage(EmailAddress from, List<EmailAddress> to, String subject, String body, boolean html) {
+    public EmailMessage {
         // to: obligatorio y sin elementos nulos
         if (to == null || to.isEmpty()) throw new RecipientsRequiredException();
         if (to.stream().anyMatch(Objects::isNull)) throw new InvalidEmailAddressException();

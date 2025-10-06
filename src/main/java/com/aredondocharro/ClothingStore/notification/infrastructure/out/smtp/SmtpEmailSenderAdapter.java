@@ -1,7 +1,7 @@
 package com.aredondocharro.ClothingStore.notification.infrastructure.out.smtp;
 
-import com.aredondocharro.ClothingStore.notification.config.AppMailProperties;
-import com.aredondocharro.ClothingStore.notification.domain.model.Email;
+import com.aredondocharro.ClothingStore.notification.domain.model.EmailMessage;
+import com.aredondocharro.ClothingStore.notification.infrastructure.config.AppMailProperties;
 import com.aredondocharro.ClothingStore.notification.domain.model.EmailAddress;
 import com.aredondocharro.ClothingStore.notification.domain.port.out.EmailSenderPort;
 import jakarta.mail.MessagingException;
@@ -21,33 +21,33 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
     private final AppMailProperties props;
 
     @Override
-    public void send(Email email) {
-        if (email.html()) sendHtml(email);
-        else sendText(email);
+    public void send(EmailMessage emailMessage) {
+        if (emailMessage.html()) sendHtml(emailMessage);
+        else sendText(emailMessage);
     }
 
-    private void sendText(Email email) {
+    private void sendText(EmailMessage emailMessage) {
         SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setTo(email.to().stream().map(EmailAddress::value).toArray(String[]::new));
-        msg.setSubject(email.subject());
-        msg.setText(email.body());
+        msg.setTo(emailMessage.to().stream().map(EmailAddress::value).toArray(String[]::new));
+        msg.setSubject(emailMessage.subject());
+        msg.setText(emailMessage.body());
 
-        String from = effectiveFrom(email);
+        String from = effectiveFrom(emailMessage);
         if (from != null) msg.setFrom(from);
         if (props.getDefaultReplyTo() != null) msg.setReplyTo(props.getDefaultReplyTo());
 
         mailSender.send(msg);
     }
 
-    private void sendHtml(Email email) {
+    private void sendHtml(EmailMessage emailMessage) {
         try {
             MimeMessage mime = mailSender.createMimeMessage();
             MimeMessageHelper h = new MimeMessageHelper(mime, "UTF-8");
-            h.setTo(email.to().stream().map(EmailAddress::value).toArray(String[]::new));
-            h.setSubject(email.subject());
-            h.setText(email.body(), true);
+            h.setTo(emailMessage.to().stream().map(EmailAddress::value).toArray(String[]::new));
+            h.setSubject(emailMessage.subject());
+            h.setText(emailMessage.body(), true);
 
-            String from = effectiveFrom(email);
+            String from = effectiveFrom(emailMessage);
             if (from != null) h.setFrom(from);
             if (props.getDefaultReplyTo() != null) h.setReplyTo(props.getDefaultReplyTo());
 
@@ -58,8 +58,8 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
     }
 
     @Nullable
-    private String effectiveFrom(Email email) {
-        if (email.from() != null) return email.from().value();
+    private String effectiveFrom(EmailMessage emailMessage) {
+        if (emailMessage.from() != null) return emailMessage.from().value();
         return props.getDefaultFrom(); // si también es null, el servidor podría asignar uno (no ideal)
     }
 }

@@ -1,5 +1,5 @@
 // src/main/java/com/aredondocharro/ClothingStore/notification/config/MailConfig.java
-package com.aredondocharro.ClothingStore.notification.config;
+package com.aredondocharro.ClothingStore.notification.infrastructure.config;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

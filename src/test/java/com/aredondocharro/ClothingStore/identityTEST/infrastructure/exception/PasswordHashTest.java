@@ -1,4 +1,4 @@
-package com.aredondocharro.ClothingStore.identityTEST.exception;
+package com.aredondocharro.ClothingStore.identityTEST.infrastructure.exception;
 import com.aredondocharro.ClothingStore.identity.domain.exception.HashedPasswordRequiredException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordNotBCryptedException;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;

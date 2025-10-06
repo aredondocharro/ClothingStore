@@ -1,6 +1,8 @@
 package com.aredondocharro.ClothingStore.identityTEST.application;
 
-import com.aredondocharro.ClothingStore.identity.application.PasswordRecoveryService;
+import com.aredondocharro.ClothingStore.identity.application.ChangePasswordService;
+import com.aredondocharro.ClothingStore.identity.application.RequestPasswordResetService;
+import com.aredondocharro.ClothingStore.identity.application.ResetPasswordService;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.MailerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
@@ -12,7 +14,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.charset.StandardCharsets;
@@ -31,35 +35,34 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PasswordRecoveryServiceTest {
 
-    @Mock
-    private UserRepositoryPort users;
+    @Mock private UserRepositoryPort users;
+    @Mock private PasswordResetTokenRepositoryPort tokens;
+    @Mock private PasswordPolicyPort passwordPolicy;
+    @Mock private SessionManagerPort sessions;
+    @Mock private PasswordHasherPort passwordHasher;
+    @Mock private MailerPort mailer;
 
-    @Mock
-    private PasswordResetTokenRepositoryPort tokens;
-
-    @Mock
-    private PasswordPolicyPort passwordPolicy;
-
-    @Mock
-    private SessionManagerPort sessions;
-
-    @Mock
-    private PasswordHasherPort passwordHasher;
-
-    @Mock
-    private MailerPort mailer;
-
-    private PasswordRecoveryService service;
+    // Servicios refactorizados
+    private RequestPasswordResetService requestPasswordResetService;
+    private ResetPasswordService resetPasswordService;
+    private ChangePasswordService changePasswordService;
 
     private static final String BASE_URL_PROP = "app.reset.baseUrl";
     private static final String TEST_BASE_URL = "https://app.example/reset-password";
 
     @BeforeEach
     void setUp() {
-        // Forzamos baseUrl conocida para poder verificar el link y extraer el raw token
+        // No es estrictamente necesario tras el refactor, pero no molesta.
         System.setProperty(BASE_URL_PROP, TEST_BASE_URL);
-        service = new PasswordRecoveryService(
-                users, tokens, passwordPolicy, mailer, sessions, passwordHasher, TEST_BASE_URL
+
+        requestPasswordResetService = new RequestPasswordResetService(
+                users, tokens, mailer, TEST_BASE_URL
+        );
+        resetPasswordService = new ResetPasswordService(
+                tokens, passwordPolicy, users, passwordHasher, sessions
+        );
+        changePasswordService = new ChangePasswordService(
+                users, passwordHasher, passwordPolicy, sessions
         );
     }
 
@@ -86,7 +89,7 @@ class PasswordRecoveryServiceTest {
             ArgumentCaptor<String> linkCap = ArgumentCaptor.forClass(String.class);
 
             // Act
-            service.requestReset(email);
+            requestPasswordResetService.requestReset(email);
 
             // Assert: flujo principal
             InOrder inOrder = inOrder(tokens, mailer);
@@ -98,7 +101,8 @@ class PasswordRecoveryServiceTest {
 
             // Validar que el link contiene el token como query param
             String link = linkCap.getValue();
-            assertTrue(link.startsWith(TEST_BASE_URL + "?token="), "Reset link must start with baseUrl + '?token='");
+            assertTrue(link.startsWith(TEST_BASE_URL + "?token="),
+                    "Reset link must start with baseUrl + '?token='");
 
             String rawToken = link.substring((TEST_BASE_URL + "?token=").length());
             assertFalse(rawToken.isBlank(), "Raw token must be present in the link");
@@ -117,14 +121,15 @@ class PasswordRecoveryServiceTest {
 
             // Hash correcto del rawToken
             String expectedHash = sha256Base64(rawToken);
-            assertEquals(expectedHash, saved.tokenHash(), "Persisted token hash must match SHA-256(rawToken) in Base64");
+            assertEquals(expectedHash, saved.tokenHash(),
+                    "Persisted token hash must match SHA-256(rawToken) in Base64");
         }
 
         @Test
         void whenUserNotFound_doNothingVisible() {
             when(users.findByEmail("missing@example.com")).thenReturn(Optional.empty());
 
-            service.requestReset("missing@example.com");
+            requestPasswordResetService.requestReset("missing@example.com");
 
             verify(tokens, never()).save(any());
             verify(tokens, never()).deleteAllForUser(any());
@@ -140,13 +145,14 @@ class PasswordRecoveryServiceTest {
             // Arrange
             UUID userId = UUID.randomUUID();
             String newPassword = "NewPass123!";
-            String anyRawToken = "whatever-raw-token"; // el service hasheará internamente
+            String anyRawToken = "whatever-raw-token"; // el servicio hasheará internamente
             String hashedNew = "HASHED_NEW";
 
             Instant now = Instant.now();
             PasswordResetTokenRepositoryPort.Token token =
                     new PasswordResetTokenRepositoryPort.Token(
-                            UUID.randomUUID(), userId, "HASHED_TOKEN", now.plus(30, ChronoUnit.MINUTES), null, now
+                            UUID.randomUUID(), userId, "HASHED_TOKEN",
+                            now.plus(30, ChronoUnit.MINUTES), null, now
                     );
 
             when(tokens.findValidByHash(anyString(), any(Instant.class)))
@@ -154,9 +160,9 @@ class PasswordRecoveryServiceTest {
             when(passwordHasher.hash(newPassword)).thenReturn(hashedNew);
 
             // Act
-            service.reset(anyRawToken, newPassword);
+            resetPasswordService.reset(anyRawToken, newPassword);
 
-            // Assert: se valida política, se actualiza password, se marca usado y se revocan sesiones
+            // Assert
             verify(passwordPolicy).validate(eq(newPassword));
             InOrder inOrder = inOrder(users, tokens, sessions);
             inOrder.verify(users).updatePasswordHash(eq(userId), eq(hashedNew));
@@ -169,7 +175,7 @@ class PasswordRecoveryServiceTest {
             when(tokens.findValidByHash(anyString(), any(Instant.class))).thenReturn(Optional.empty());
 
             assertThrows(IllegalArgumentException.class,
-                    () -> service.reset("bad-token", "NewPass123!"));
+                    () -> resetPasswordService.reset("bad-token", "NewPass123!"));
 
             verify(users, never()).updatePasswordHash(any(), any());
             verify(tokens, never()).markUsed(any(), any());
@@ -195,7 +201,7 @@ class PasswordRecoveryServiceTest {
             when(passwordHasher.matches(current, currentHash)).thenReturn(true);
             when(passwordHasher.hash(next)).thenReturn(nextHash);
 
-            service.change(userId, current, next);
+            changePasswordService.change(userId, current, next);
 
             verify(passwordPolicy).validate(eq(next));
             InOrder inOrder = inOrder(users, sessions);
@@ -216,7 +222,8 @@ class PasswordRecoveryServiceTest {
             when(users.findById(userId)).thenReturn(Optional.of(userView));
             when(passwordHasher.matches(current, storedHash)).thenReturn(false);
 
-            assertThrows(IllegalArgumentException.class, () -> service.change(userId, current, next));
+            assertThrows(IllegalArgumentException.class,
+                    () -> changePasswordService.change(userId, current, next));
 
             verify(users, never()).updatePasswordHash(any(), any());
             verify(sessions, never()).revokeAllSessions(any());

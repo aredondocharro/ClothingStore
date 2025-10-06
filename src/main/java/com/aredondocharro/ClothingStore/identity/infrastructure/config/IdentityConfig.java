@@ -1,16 +1,7 @@
-package com.aredondocharro.ClothingStore.identity.config;
+package com.aredondocharro.ClothingStore.identity.infrastructure.config;
 
-import com.aredondocharro.ClothingStore.identity.application.LoginService;
-import com.aredondocharro.ClothingStore.identity.application.LogoutService;
-import com.aredondocharro.ClothingStore.identity.application.PasswordRecoveryService;
-import com.aredondocharro.ClothingStore.identity.application.RefreshAccessTokenService;
-import com.aredondocharro.ClothingStore.identity.application.RegisterUserService;
-import com.aredondocharro.ClothingStore.identity.application.VerifyEmailService;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.LoginUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.LogoutUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.RefreshAccessTokenUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.RegisterUserUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.VerifyEmailUseCase;
+import com.aredondocharro.ClothingStore.identity.application.*;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.MailerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
@@ -35,8 +26,8 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataRefreshSessionRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpa;
-import com.aredondocharro.ClothingStore.identity.infrastructure.security.NoopSessionManager;
-import com.aredondocharro.ClothingStore.identity.infrastructure.security.SimplePasswordPolicy;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.NoopSessionManager;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.SimplePasswordPolicy;
 import com.aredondocharro.ClothingStore.notification.domain.port.in.SendEmailUseCase;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -49,31 +40,41 @@ public class IdentityConfig {
     // Adapters (OUT)
     // ========================================================================
 
-    /** Adapter JPA que implementa LoadUserPort / SaveUserPort (dominio User) */
+    /**
+     * Adapter JPA que implementa LoadUserPort / SaveUserPort (dominio User)
+     */
     @Bean
     public UserPersistenceAdapter userPersistenceAdapter(SpringDataUserRepository repo) {
         return new UserPersistenceAdapter(repo);
     }
 
-    /** Adapter para UserRepositoryPort (UserView + updatePasswordHash) */
+    /**
+     * Adapter para UserRepositoryPort (UserView + updatePasswordHash)
+     */
     @Bean
     public UserRepositoryPort userRepositoryPort(SpringDataUserRepository repo) {
         return new UserRepositoryAdapter(repo);
     }
 
-    /** Adapter para PasswordResetTokenRepositoryPort (tokens de reset) */
+    /**
+     * Adapter para PasswordResetTokenRepositoryPort (tokens de reset)
+     */
     @Bean
     public PasswordResetTokenRepositoryPort passwordResetTokenRepositoryPort(SpringPasswordResetTokenJpa jpa) {
         return new PasswordResetTokenRepositoryAdapter(jpa);
     }
 
-    /** Hasher de contraseñas (BCrypt) */
+    /**
+     * Hasher de contraseñas (BCrypt)
+     */
     @Bean
     public PasswordHasherPort passwordHasherPort() {
         return new BCryptPasswordHasherAdapter();
     }
 
-    /** Envío de correos usando el caso de uso de notificaciones */
+    /**
+     * Envío de correos usando el caso de uso de notificaciones
+     */
     @Bean
     public MailerPort mailerPort(SendEmailUseCase sendEmail,
                                  @Value("${mail.from:no-reply@clothingstore.local}") String from,
@@ -82,7 +83,9 @@ public class IdentityConfig {
         return new MailerAdapter(sendEmail, from, verifyTpl, resetTpl);
     }
 
-    /** Persistencia de sesiones/refresh tokens (JPA) */
+    /**
+     * Persistencia de sesiones/refresh tokens (JPA)
+     */
     @Bean
     public RefreshTokenStorePort refreshTokenStorePort(SpringDataRefreshSessionRepository repo) {
         return new JpaRefreshTokenStoreAdapter(repo);
@@ -134,16 +137,31 @@ public class IdentityConfig {
     }
 
     @Bean
-    public PasswordRecoveryService passwordRecoveryService(
+    RequestPasswordResetUseCase requestPasswordResetUseCase(
             UserRepositoryPort users,
             PasswordResetTokenRepositoryPort tokens,
-            PasswordPolicyPort passwordPolicy,
             MailerPort mailer,
-            SessionManagerPort sessions,
+            @Value("${app.reset.baseUrl}") String baseUrl) {
+        return new RequestPasswordResetService(users, tokens, mailer, baseUrl);
+    }
+
+    @Bean
+    ResetPasswordUseCase resetPasswordUseCase(
+            PasswordResetTokenRepositoryPort tokens,
+            PasswordPolicyPort passwordPolicy,
+            UserRepositoryPort users,
             PasswordHasherPort passwordHasher,
-            @Value("${app.reset.baseUrl}") String resetBaseUrl
-    ) {
-        return new PasswordRecoveryService(users, tokens, passwordPolicy, mailer, sessions, passwordHasher, resetBaseUrl);
+            SessionManagerPort sessions) {
+        return new ResetPasswordService(tokens, passwordPolicy, users, passwordHasher, sessions);
+    }
+
+    @Bean
+    ChangePasswordUseCase changePasswordUseCase(
+            UserRepositoryPort users,
+            PasswordHasherPort passwordHasher,
+            PasswordPolicyPort passwordPolicy,
+            SessionManagerPort sessions) {
+        return new ChangePasswordService(users, passwordHasher, passwordPolicy, sessions);
     }
 
     // ========================================================================
@@ -152,14 +170,17 @@ public class IdentityConfig {
 
     @Bean
     public RegisterUserUseCase registerUserUseCase(
-            LoadUserPort loadUserPort,        // satisfecho por userPersistenceAdapter
-            SaveUserPort saveUserPort,        // satisfecho por userPersistenceAdapter
+            LoadUserPort loadUserPort,
+            SaveUserPort saveUserPort,
             PasswordHasherPort hasher,
             TokenGeneratorPort tokens,
             MailerPort mailer,
-            @Value("${app.verify.baseUrl}") String verifyBaseUrl
+            @Value("${app.verify.baseUrl}") String verifyBaseUrl,
+            PasswordPolicyPort passwordPolicy // <-- NUEVO
     ) {
-        return new RegisterUserService(loadUserPort, saveUserPort, hasher, tokens, mailer, verifyBaseUrl);
+        return new RegisterUserService(
+                loadUserPort, saveUserPort, hasher, tokens, mailer, verifyBaseUrl, passwordPolicy
+        );
     }
 
     @Bean

@@ -1,15 +1,9 @@
 package com.aredondocharro.ClothingStore.identity.application;
 
-import com.aredondocharro.ClothingStore.identity.domain.port.in.ChangePasswordUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.RequestPasswordResetUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.ResetPasswordUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.MailerPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.SessionManagerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -21,35 +15,24 @@ import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
 
-public class PasswordRecoveryService implements
-        RequestPasswordResetUseCase, ResetPasswordUseCase, ChangePasswordUseCase {
+public class RequestPasswordResetService implements RequestPasswordResetUseCase {
 
     private final UserRepositoryPort users;
     private final PasswordResetTokenRepositoryPort tokens;
-    private final PasswordPolicyPort passwordPolicy;
-    private final SessionManagerPort sessions;
-    private final PasswordHasherPort passwordHasher;
     private final MailerPort mailer;
     private final String resetBaseUrl;
 
     private static final SecureRandom RNG = new SecureRandom();
-    private static final int TOKEN_BYTES = 32;      // ~256 bits
-    private static final int EXP_MINUTES = 30;      // TTL 30 min
+    private static final int TOKEN_BYTES = 32;   // ~256 bits
+    private static final int EXP_MINUTES = 30;   // TTL 30 min
 
-    public PasswordRecoveryService(UserRepositoryPort users,
-                                   PasswordResetTokenRepositoryPort tokens,
-                                   PasswordPolicyPort passwordPolicy,
-                                   MailerPort mailer,
-                                   SessionManagerPort sessions,
-                                   PasswordHasherPort passwordHasher,
-                                   @Value("${app.reset.baseUrl}") String resetBaseUrl){
-
+    public RequestPasswordResetService(UserRepositoryPort users,
+                                       PasswordResetTokenRepositoryPort tokens,
+                                       MailerPort mailer,
+                                       String resetBaseUrl) {
         this.users = users;
         this.tokens = tokens;
-        this.passwordPolicy = passwordPolicy;
         this.mailer = mailer;
-        this.sessions = sessions;
-        this.passwordHasher = passwordHasher;
         this.resetBaseUrl = resetBaseUrl;
     }
 
@@ -77,44 +60,6 @@ public class PasswordRecoveryService implements
             mailer.sendPasswordResetLink(user.email(), link);
         }
         // 202 Accepted siempre en el controlador (anti-enumeración)
-    }
-
-    @Override
-    @Transactional
-    public void reset(String rawToken, String newPassword) {
-        String hash = sha256(rawToken);
-        Instant now = Instant.now();
-
-        PasswordResetTokenRepositoryPort.Token token = tokens.findValidByHash(hash, now)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token"));
-
-        passwordPolicy.validate(newPassword);
-
-        String newHash = passwordHasher.hash(newPassword);
-        users.updatePasswordHash(token.userId(), newHash);
-
-        tokens.markUsed(token.id(), now);
-
-        sessions.revokeAllSessions(token.userId());
-    }
-
-    @Override
-    @Transactional
-    public void change(UUID userId, String currentPassword, String newPassword) {
-        UserRepositoryPort.UserView user = users.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        boolean matches = passwordHasher.matches(currentPassword, user.passwordHash());
-        if (!matches) {
-            throw new IllegalArgumentException("Current password is incorrect");
-        }
-
-        passwordPolicy.validate(newPassword);
-
-        String newHash = passwordHasher.hash(newPassword);
-        users.updatePasswordHash(user.id(), newHash);
-
-        sessions.revokeAllSessions(user.id());
     }
 
     private static String generateUrlSafeToken(int numBytes) {

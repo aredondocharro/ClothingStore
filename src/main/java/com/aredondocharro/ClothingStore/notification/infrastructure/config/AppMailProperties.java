@@ -1,5 +1,5 @@
 // src/main/java/com/aredondocharro/ClothingStore/notification/config/AppMailProperties.java
-package com.aredondocharro.ClothingStore.notification.config;
+package com.aredondocharro.ClothingStore.notification.infrastructure.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

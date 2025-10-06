@@ -1,4 +1,4 @@
-package com.aredondocharro.ClothingStore.identityTEST.exception;
+package com.aredondocharro.ClothingStore.identityTEST.infrastructure.exception;
 
 import com.aredondocharro.ClothingStore.identity.domain.exception.EmailRequiredException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.InvalidEmailFormatException;
@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class EmailTest {
+class EmailMessageTest {
 
     @Test
     void shouldThrowEmailRequired_whenNullOrBlank() {

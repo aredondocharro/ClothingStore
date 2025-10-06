@@ -44,10 +44,13 @@ class AuthControllerTest {
                 .thenReturn(new AuthResult("ACCESS", "REFRESH_COOKIE"));
 
         var json = """
-                {"email":"user@example.com","password":"Secret123!"}
-                """;
+            {"email":"user@example.com","password":"Secret123!"}
+            """;
 
-        mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(json))
+        mvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .characterEncoding("UTF-8")
+                        .content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").value("ACCESS"))
                 .andExpect(jsonPath("$.refreshToken", Matchers.nullValue()));

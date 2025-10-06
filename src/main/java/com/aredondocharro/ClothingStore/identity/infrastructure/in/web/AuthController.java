@@ -63,7 +63,8 @@ public class AuthController {
         final Email emailVO = Email.of(req.getEmail()); // convertir String -> VO
         log.debug("POST /auth/register email={}", emailVO.getValue());
 
-        registerUC.register(emailVO, req.getPassword());
+        registerUC.register(emailVO, req.getPassword(), req.getConfirmPassword());
+
 
         log.info("Registration accepted for email={}", LogSanitizer.maskEmail(emailVO.getValue()));
         return ResponseEntity.accepted()
