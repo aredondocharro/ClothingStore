@@ -1,5 +1,6 @@
 package com.aredondocharro.ClothingStore.identity.domain.model;
 
+import com.aredondocharro.ClothingStore.identity.domain.exception.RefreshSessionInvalidException;
 import lombok.Builder;
 
 import java.time.Instant;
@@ -18,9 +19,9 @@ public record RefreshSession(
 ) {
     // Compact constructor: valida invariantes y pone defaults
     public RefreshSession {
-        if (jti == null || jti.isBlank()) throw new IllegalArgumentException("jti is required");
-        if (userId == null) throw new IllegalArgumentException("userId is required");
-        if (expiresAt == null) throw new IllegalArgumentException("expiresAt is required");
+        if (jti == null) throw RefreshSessionInvalidException.jtiRequired();
+        if (userId == null) throw RefreshSessionInvalidException.userIdRequired();
+        if (expiresAt == null) throw RefreshSessionInvalidException.expiresAtRequired();
         if (createdAt == null) createdAt = Instant.now();
         // revokedAt, replacedByJti, ip, userAgent pueden ser nulos inicialmente
     }

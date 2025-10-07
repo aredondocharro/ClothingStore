@@ -25,7 +25,7 @@ import java.time.Instant;
 import java.util.List;
 
 @Slf4j
-@RestControllerAdvice(basePackageClasses = { AuthController.class })
+@RestControllerAdvice(basePackageClasses = {AuthController.class})
 public class IdentityGlobalErrorHandler {
 
     // -------------------------
@@ -56,9 +56,7 @@ public class IdentityGlobalErrorHandler {
     ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest req) {
         // Incluimos cabecera WWW-Authenticate por si algún cliente lo necesita
         var entity = build(HttpStatus.UNAUTHORIZED, "identity.invalid_credentials", ex.getMessage(), req, null, ex, false);
-        return ResponseEntity.status(entity.getStatusCode())
-                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
-                .body(entity.getBody());
+        return ResponseEntity.status(entity.getStatusCode()).header(HttpHeaders.WWW_AUTHENTICATE, "Bearer").body(entity.getBody());
     }
 
     @ExceptionHandler(InvalidEmailFormatException.class)
@@ -101,6 +99,31 @@ public class IdentityGlobalErrorHandler {
         return build(HttpStatus.BAD_REQUEST, "identity.verification_token_invalid", ex.getMessage(), req, null, ex, false);
     }
 
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex, HttpServletRequest req) {
+
+        return build(HttpStatus.NOT_FOUND, "identity.user_not_found", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(NewPasswordSameAsOldException.class)
+    ResponseEntity<ErrorResponse> handleNewPasswordSameAsOld(NewPasswordSameAsOldException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.new_password_same_as_old", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(PasswordResetTokenInvalidException.class)
+    public ResponseEntity<ErrorResponse> handlePasswordResetTokenInvalid(PasswordResetTokenInvalidException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.password_reset_token_invalid", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(RefreshSessionInvalidException.class)
+    public ResponseEntity<ErrorResponse> handleRefreshSessionInvalid(RefreshSessionInvalidException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.refresh_session_invalid", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(RoleRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleRoleRequired(RoleRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.role_required", ex.getMessage(), req, null, ex, false);
+    }
     // -------------------------
     // SECURITY / JWT
     // -------------------------
@@ -108,9 +131,7 @@ public class IdentityGlobalErrorHandler {
     @ExceptionHandler(AuthenticationException.class)
     ResponseEntity<ErrorResponse> handleAuth(AuthenticationException ex, HttpServletRequest req) {
         var entity = build(HttpStatus.UNAUTHORIZED, "identity.unauthorized", ex.getMessage(), req, null, ex, false);
-        return ResponseEntity.status(entity.getStatusCode())
-                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
-                .body(entity.getBody());
+        return ResponseEntity.status(entity.getStatusCode()).header(HttpHeaders.WWW_AUTHENTICATE, "Bearer").body(entity.getBody());
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -129,24 +150,20 @@ public class IdentityGlobalErrorHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest req) {
-        List<ErrorResponse.FieldError> fields = ex.getBindingResult().getFieldErrors()
-                .stream().map(this::toFieldError).toList();
+        List<ErrorResponse.FieldError> fields = ex.getBindingResult().getFieldErrors().stream().map(this::toFieldError).toList();
         return build(HttpStatus.BAD_REQUEST, "identity.validation_error", "Validation failed", req, fields, ex, false);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest req) {
-        var fields = ex.getConstraintViolations().stream()
-                .map(v -> new ErrorResponse.FieldError(
-                        v.getPropertyPath() != null ? v.getPropertyPath().toString() : null,
-                        v.getMessage()))
-                .toList();
+        var fields = ex.getConstraintViolations().stream().map(v -> new ErrorResponse.FieldError(v.getPropertyPath() != null ? v.getPropertyPath().toString() : null, v.getMessage())).toList();
         return build(HttpStatus.BAD_REQUEST, "identity.constraint_violation", "Validation failed", req, fields, ex, false);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "identity.bad_request", ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage(), req, null, ex, false);
+        ex.getMostSpecificCause();
+        return build(HttpStatus.BAD_REQUEST, "identity.bad_request", ex.getMostSpecificCause().getMessage(), req, null, ex, false);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
@@ -184,27 +201,13 @@ public class IdentityGlobalErrorHandler {
     // Helpers
     // -------------------------
 
-    private ResponseEntity<ErrorResponse> build(HttpStatus status,
-                                                String code,
-                                                String message,
-                                                HttpServletRequest req,
-                                                List<ErrorResponse.FieldError> fieldErrors,
-                                                Exception ex,
-                                                boolean logAsError) {
+    private ResponseEntity<ErrorResponse> build(HttpStatus status, String code, String message, HttpServletRequest req, List<ErrorResponse.FieldError> fieldErrors, Exception ex, boolean logAsError) {
         if (logAsError) {
             log.error("[{}] {} - {}", code, status.value(), ex.getMessage(), ex);
         } else {
             log.warn("[{}] {} - {}", code, status.value(), ex.getMessage());
         }
-        var body = new ErrorResponse(
-                Instant.now(),
-                status.value(),
-                status.getReasonPhrase(),
-                code,
-                message,
-                req != null ? req.getRequestURI() : null,
-                (fieldErrors == null || fieldErrors.isEmpty()) ? null : List.copyOf(fieldErrors)
-        );
+        var body = new ErrorResponse(Instant.now(), status.value(), status.getReasonPhrase(), code, message, req != null ? req.getRequestURI() : null, (fieldErrors == null || fieldErrors.isEmpty()) ? null : List.copyOf(fieldErrors));
         return ResponseEntity.status(status).body(body);
     }
 

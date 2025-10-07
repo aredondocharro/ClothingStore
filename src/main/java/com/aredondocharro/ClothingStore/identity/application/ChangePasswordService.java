@@ -1,5 +1,7 @@
 package com.aredondocharro.ClothingStore.identity.application;
 
+import com.aredondocharro.ClothingStore.identity.domain.exception.NewPasswordSameAsOldException;
+import com.aredondocharro.ClothingStore.identity.domain.exception.UserNotFoundException;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.ChangePasswordUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
@@ -30,11 +32,11 @@ public class ChangePasswordService implements ChangePasswordUseCase {
     @Transactional
     public void change(UUID userId, String currentPassword, String newPassword) {
         UserRepositoryPort.UserView user = users.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(userId));
 
         boolean matches = passwordHasher.matches(currentPassword, user.passwordHash());
         if (!matches) {
-            throw new IllegalArgumentException("Current password is incorrect");
+            throw new NewPasswordSameAsOldException();
         }
 
         passwordPolicy.validate(newPassword);

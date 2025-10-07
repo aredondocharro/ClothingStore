@@ -1,5 +1,6 @@
 package com.aredondocharro.ClothingStore.identity.application;
 
+import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordResetTokenInvalidException;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.ResetPasswordUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
@@ -40,7 +41,7 @@ public class ResetPasswordService implements ResetPasswordUseCase {
         Instant now = Instant.now();
 
         PasswordResetTokenRepositoryPort.Token token = tokens.findValidByHash(hash, now)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token"));
+                .orElseThrow (PasswordResetTokenInvalidException::new);
 
         passwordPolicy.validate(newPassword);
 

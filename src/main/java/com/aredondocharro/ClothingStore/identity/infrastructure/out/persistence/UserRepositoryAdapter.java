@@ -1,5 +1,6 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence;
 
+import com.aredondocharro.ClothingStore.identity.domain.exception.UserNotFoundException;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.UserEntity;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
@@ -57,7 +58,7 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
 
         UserEntity u = repo.findById(id).orElseThrow(() -> {
             log.warn("Attempt to update password for non-existing user id={}", id);
-            return new IllegalArgumentException("User not found");
+            return new UserNotFoundException(id);
         });
 
         u.setPasswordHash(newHash);
