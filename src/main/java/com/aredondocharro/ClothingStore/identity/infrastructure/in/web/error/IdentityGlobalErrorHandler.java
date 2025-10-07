@@ -21,148 +21,191 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 
-
 import java.time.Instant;
 import java.util.List;
 
 @Slf4j
-@RestControllerAdvice(basePackageClasses = {AuthController.class})
+@RestControllerAdvice(basePackageClasses = { AuthController.class })
 public class IdentityGlobalErrorHandler {
 
-    // 400 - DTO inválido / JSON malformado
-    @ExceptionHandler({MethodArgumentNotValidException.class})
-    ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
-        List<ErrorResponse.FieldError> fields = ex.getBindingResult().getFieldErrors().stream().map(this::toFieldError).toList();
-        return build(HttpStatus.BAD_REQUEST, "validation.error", "Validation failed", req, fields, ex, false);
+    // -------------------------
+    // DOMAIN EXCEPTIONS (IDENTITY)
+    // -------------------------
+
+    @ExceptionHandler(EmailAlreadyExistException.class)
+    ResponseEntity<ErrorResponse> handleEmailAlreadyExist(EmailAlreadyExistException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "identity.email_already_exists", ex.getMessage(), req, null, ex, false);
     }
 
-    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class, IllegalArgumentException.class})
-    ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "identity.bad_request", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 401 - credenciales inválidas / no autenticado
-    @ExceptionHandler(AuthenticationException.class)
-    ResponseEntity<ErrorResponse> handleAuth(AuthenticationException ex, HttpServletRequest req) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header(HttpHeaders.WWW_AUTHENTICATE, "Bearer").body(error(HttpStatus.UNAUTHORIZED, "identity.unauthorized", ex.getMessage(), req, null));
-    }
-
-    // 403 - autenticado pero sin verificar email o sin permisos
-    @ExceptionHandler(AccessDeniedException.class)
-    ResponseEntity<ErrorResponse> handleAccess(AccessDeniedException ex, HttpServletRequest req) {
-        return build(HttpStatus.FORBIDDEN, "identity.forbidden", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 400 - token verificación inválido/expirado (JWT)
-    @ExceptionHandler(JWTVerificationException.class)
-    ResponseEntity<ErrorResponse> handleJwt(JWTVerificationException ex, HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "identity.verification_token_invalid", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 400 - email con formato inválido (desde VO Email.of(...))
-    @ExceptionHandler(InvalidEmailFormatException.class)
-    ResponseEntity<ErrorResponse> handleInvalidEmail(InvalidEmailFormatException ex, HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "identity.invalid_email", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 401 - credenciales inválidas (cuando migres LoginService)
-    @ExceptionHandler(InvalidCredentialsException.class)
-    ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest req) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header(HttpHeaders.WWW_AUTHENTICATE, "Bearer").body(error(HttpStatus.UNAUTHORIZED, "identity.invalid_credentials", ex.getMessage(), req, null));
-    }
-
-    // 403 - autenticado pero email no verificado
     @ExceptionHandler(EmailNotVerifiedException.class)
     ResponseEntity<ErrorResponse> handleEmailNotVerified(EmailNotVerifiedException ex, HttpServletRequest req) {
         return build(HttpStatus.FORBIDDEN, "identity.email_not_verified", ex.getMessage(), req, null, ex, false);
     }
 
-    // 409 - conflicto: usuario ya existe
-    @ExceptionHandler(EmailAlreadyExistException.class)
-    ResponseEntity<ErrorResponse> handleEmailAlreadyExists(EmailAlreadyExistException ex, HttpServletRequest req) {
-        return build(HttpStatus.CONFLICT, "identity.user_already_exists", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 400 - token de verificación inválido/expirado (dominio)
-    @ExceptionHandler(VerificationTokenInvalidException.class)
-    ResponseEntity<ErrorResponse> handleVerificationTokenInvalid(VerificationTokenInvalidException ex, HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "identity.verification_token_invalid", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 400 - Violaciones de validación en @PathVariable/@RequestParam
-    @ExceptionHandler(ConstraintViolationException.class)
-    ResponseEntity<ErrorResponse> handleConstraintViolation(jakarta.validation.ConstraintViolationException ex, HttpServletRequest req) {
-        List<ErrorResponse.FieldError> fields = ex.getConstraintViolations().stream().map(v -> new ErrorResponse.FieldError(v.getPropertyPath().toString(), v.getMessage())).toList();
-        return build(HttpStatus.BAD_REQUEST, "validation.error", "Validation failed", req, fields, ex, false);
-    }
-
-    // 400 - Password no hasheada (cuando migres RegisterUseCase)
-    @ExceptionHandler(HashedPasswordRequiredException.class)
-    ResponseEntity<ErrorResponse> handleNotHashedPassword(HashedPasswordRequiredException ex, HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "identity.password_not_hashed", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 400 - Password y confirmación no coinciden (cuando migres RegisterUseCase)
-    @ExceptionHandler(PasswordConfirmationMismatchException.class)
-    ResponseEntity<ErrorResponse> handlePasswordMismatch(PasswordConfirmationMismatchException ex, HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "identity.password_mismatch", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 400 - Password no en formato BCrypt (cuando migres RegisterUseCase)
-    @ExceptionHandler(PasswordNotBCryptedException.class)
-    ResponseEntity<ErrorResponse> handlePasswordNotBCrypted(PasswordNotBCryptedException ex, HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "identity.password_not_bcrypt", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 400 - Falta un parámetro obligatorio
-    @ExceptionHandler(MissingServletRequestParameterException.class)
-    ResponseEntity<ErrorResponse> handleMissingParam(org.springframework.web.bind.MissingServletRequestParameterException ex, HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "identity.bad_request", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 405 - Método no soportado
-    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    ResponseEntity<ErrorResponse> handleMethodNotSupported(org.springframework.web.HttpRequestMethodNotSupportedException ex, HttpServletRequest req) {
-        return build(HttpStatus.METHOD_NOT_ALLOWED, "identity.method_not_allowed", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 400 - Password faltante en el request (cuando migres RegisterUseCase)
-    @ExceptionHandler(PasswordRequiredException.class)
-    ResponseEntity<ErrorResponse> handlePasswordRequired(PasswordRequiredException ex, HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "identity.password_required", ex.getMessage(), req, null, ex, false);
-    }
-
-    // 400 - Falta la cookie HttpOnly de refresh (cuando migres RefreshController)
-    @ExceptionHandler(MissingRefreshCookieException.class)
-    ResponseEntity<ErrorResponse> handleMissingRefreshCookie(MissingRefreshCookieException ex, HttpServletRequest req) {
-        List<ErrorResponse.FieldError> fields = List.of(new ErrorResponse.FieldError(MissingRefreshCookieException.COOKIE_NAME, "Required HttpOnly cookie was not provided"));
-
-        return build(HttpStatus.BAD_REQUEST, "identity.missing_refresh_cookie", ex.getMessage(), req, fields, ex, false);
-    }
-
-
-    // 400 - Falta el email en el request (cuando migres RegisterUseCase)
     @ExceptionHandler(EmailRequiredException.class)
     ResponseEntity<ErrorResponse> handleEmailRequired(EmailRequiredException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "identity.email_required", ex.getMessage(), req, null, ex, false);
     }
 
-    // 500 (fallback)
+    @ExceptionHandler(HashedPasswordRequiredException.class)
+    ResponseEntity<ErrorResponse> handleHashedPasswordRequired(HashedPasswordRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.hashed_password_required", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest req) {
+        // Incluimos cabecera WWW-Authenticate por si algún cliente lo necesita
+        var entity = build(HttpStatus.UNAUTHORIZED, "identity.invalid_credentials", ex.getMessage(), req, null, ex, false);
+        return ResponseEntity.status(entity.getStatusCode())
+                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
+                .body(entity.getBody());
+    }
+
+    @ExceptionHandler(InvalidEmailFormatException.class)
+    ResponseEntity<ErrorResponse> handleInvalidEmailFormat(InvalidEmailFormatException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.invalid_email_format", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(InvalidPasswordException.class)
+    ResponseEntity<ErrorResponse> handleInvalidPassword(InvalidPasswordException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.invalid_password", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(PasswordMismatchException.class)
+    ResponseEntity<ErrorResponse> handlePasswordMismatch(PasswordMismatchException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.password_mismatch", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(MissingRefreshCookieException.class)
+    ResponseEntity<ErrorResponse> handleMissingRefreshCookie(MissingRefreshCookieException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.missing_refresh_cookie", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(PasswordConfirmationMismatchException.class)
+    ResponseEntity<ErrorResponse> handlePasswordConfirmationMismatch(PasswordConfirmationMismatchException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.password_confirmation_mismatch", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(PasswordNotBCryptedException.class)
+    ResponseEntity<ErrorResponse> handlePasswordNotBCrypted(PasswordNotBCryptedException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.password_not_bcrypted", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(PasswordRequiredException.class)
+    ResponseEntity<ErrorResponse> handlePasswordRequired(PasswordRequiredException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.password_required", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(VerificationTokenInvalidException.class)
+    ResponseEntity<ErrorResponse> handleVerificationTokenInvalid(VerificationTokenInvalidException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.verification_token_invalid", ex.getMessage(), req, null, ex, false);
+    }
+
+    // -------------------------
+    // SECURITY / JWT
+    // -------------------------
+
+    @ExceptionHandler(AuthenticationException.class)
+    ResponseEntity<ErrorResponse> handleAuth(AuthenticationException ex, HttpServletRequest req) {
+        var entity = build(HttpStatus.UNAUTHORIZED, "identity.unauthorized", ex.getMessage(), req, null, ex, false);
+        return ResponseEntity.status(entity.getStatusCode())
+                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
+                .body(entity.getBody());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, "identity.access_denied", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(JWTVerificationException.class)
+    ResponseEntity<ErrorResponse> handleJwtVerification(JWTVerificationException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.jwt_invalid", ex.getMessage(), req, null, ex, false);
+    }
+
+    // -------------------------
+    // SPRING / VALIDATION / HTTP
+    // -------------------------
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpServletRequest req) {
+        List<ErrorResponse.FieldError> fields = ex.getBindingResult().getFieldErrors()
+                .stream().map(this::toFieldError).toList();
+        return build(HttpStatus.BAD_REQUEST, "identity.validation_error", "Validation failed", req, fields, ex, false);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest req) {
+        var fields = ex.getConstraintViolations().stream()
+                .map(v -> new ErrorResponse.FieldError(
+                        v.getPropertyPath() != null ? v.getPropertyPath().toString() : null,
+                        v.getMessage()))
+                .toList();
+        return build(HttpStatus.BAD_REQUEST, "identity.constraint_violation", "Validation failed", req, fields, ex, false);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.bad_request", ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest req) {
+        String msg = "Parameter '" + ex.getName() + "' has invalid value";
+        return build(HttpStatus.BAD_REQUEST, "identity.type_mismatch", msg, req, null, ex, false);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    ResponseEntity<ErrorResponse> handleMissingParam(MissingServletRequestParameterException ex, HttpServletRequest req) {
+        String msg = "Missing request parameter: " + ex.getParameterName();
+        return build(HttpStatus.BAD_REQUEST, "identity.missing_parameter", msg, req, null, ex, false);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex, HttpServletRequest req) {
+        return build(HttpStatus.METHOD_NOT_ALLOWED, "identity.method_not_allowed", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, "identity.bad_request", ex.getMessage(), req, null, ex, false);
+    }
+
+    // -------------------------
+    // FALLBACK
+    // -------------------------
+
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest req) {
+    ResponseEntity<ErrorResponse> handleAny(Exception ex, HttpServletRequest req) {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "identity.internal_error", "Unexpected error", req, null, ex, true);
     }
 
+    // -------------------------
+    // Helpers
+    // -------------------------
 
-    /* ===================== HELPERS ===================== */
-    private ResponseEntity<ErrorResponse> build(HttpStatus status, String code, String message, HttpServletRequest req, List<ErrorResponse.FieldError> fields, Exception ex, boolean logAsError) {
-        if (logAsError) log.error("{}: {}", code, ex.getMessage(), ex);
-        else log.warn("{}: {}", code, ex.getMessage());
-        return ResponseEntity.status(status).body(error(status, code, message, req, fields));
-    }
-
-    private ErrorResponse error(HttpStatus status, String code, String message, HttpServletRequest req, List<ErrorResponse.FieldError> fields) {
-        return new ErrorResponse(Instant.now(), status.value(), status.getReasonPhrase(), code, message, req.getRequestURI(), fields);
+    private ResponseEntity<ErrorResponse> build(HttpStatus status,
+                                                String code,
+                                                String message,
+                                                HttpServletRequest req,
+                                                List<ErrorResponse.FieldError> fieldErrors,
+                                                Exception ex,
+                                                boolean logAsError) {
+        if (logAsError) {
+            log.error("[{}] {} - {}", code, status.value(), ex.getMessage(), ex);
+        } else {
+            log.warn("[{}] {} - {}", code, status.value(), ex.getMessage());
+        }
+        var body = new ErrorResponse(
+                Instant.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                code,
+                message,
+                req != null ? req.getRequestURI() : null,
+                (fieldErrors == null || fieldErrors.isEmpty()) ? null : List.copyOf(fieldErrors)
+        );
+        return ResponseEntity.status(status).body(body);
     }
 
     private ErrorResponse.FieldError toFieldError(FieldError fe) {
