@@ -124,6 +124,15 @@ public class IdentityGlobalErrorHandler {
     public ResponseEntity<ErrorResponse> handleRoleRequired(RoleRequiredException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "identity.role_required", ex.getMessage(), req, null, ex, false);
     }
+    @ExceptionHandler(CannotRemoveLastAdminException.class)
+    public ResponseEntity<ErrorResponse> handleCannotRemoveLastAdmin(CannotRemoveLastAdminException ex,HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "identity.cannot_remove_last_admin", ex.getMessage(), req, null, ex, false);
+    }
+
+    @ExceptionHandler(SelfDemotionForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleSelfDemotion(SelfDemotionForbiddenException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, "identity.self_demotion_forbidden", ex.getMessage(), req, null, ex, false);
+    }
     // -------------------------
     // SECURITY / JWT
     // -------------------------

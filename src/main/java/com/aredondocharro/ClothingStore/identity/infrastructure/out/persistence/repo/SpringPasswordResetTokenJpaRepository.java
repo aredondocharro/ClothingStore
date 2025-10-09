@@ -10,7 +10,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface SpringPasswordResetTokenJpa extends JpaRepository<PasswordResetTokenEntity, UUID> {
+public interface SpringPasswordResetTokenJpaRepository extends JpaRepository<PasswordResetTokenEntity, UUID> {
 
     Optional<PasswordResetTokenEntity> findByTokenHashAndExpiresAtAfterAndUsedAtIsNull(
             String tokenHash, Instant now

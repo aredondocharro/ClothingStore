@@ -7,6 +7,8 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherP
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.SessionManagerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.view.CredentialsView;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.view.UserView;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
@@ -31,10 +33,10 @@ public class ChangePasswordService implements ChangePasswordUseCase {
     @Override
     @Transactional
     public void change(UUID userId, String currentPassword, String newPassword) {
-        UserRepositoryPort.UserView user = users.findById(userId)
+        CredentialsView user = users.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
-        boolean matches = passwordHasher.matches(currentPassword, user.passwordHash());
+        boolean matches = passwordHasher.matches(currentPassword, user.passwordHash().getValue());
         if (!matches) {
             throw new NewPasswordSameAsOldException();
         }

@@ -1,0 +1,44 @@
+package com.aredondocharro.ClothingStore.identity.application;
+
+import com.aredondocharro.ClothingStore.identity.domain.exception.CannotRemoveLastAdminException;
+import com.aredondocharro.ClothingStore.identity.domain.exception.SelfDemotionForbiddenException;
+import com.aredondocharro.ClothingStore.identity.domain.exception.UserNotFoundException;
+import com.aredondocharro.ClothingStore.identity.domain.model.Role;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.UpdateUserRolesUseCase;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.UserAdminRepositoryPort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.view.UserView;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.util.Set;
+import java.util.UUID;
+
+@Slf4j
+@AllArgsConstructor
+public class UpdateUserRolesService implements UpdateUserRolesUseCase {
+
+    private final UserAdminRepositoryPort repo;
+
+    @Override
+    public void setRoles(UUID userId, Set<Role> roles) {
+        if (!repo.existsById(userId)) {
+            throw new UserNotFoundException(userId);
+        }
+
+        // Normaliza roles nulos/vacíos → USER por defecto
+        Set<Role> normalized = (roles == null || roles.isEmpty()) ? Set.of(Role.USER) : roles;
+
+        // Si actualmente es ADMIN y lo vas a quitar, asegúrate de no dejar el sistema sin admins
+        boolean targetIsAdminNow = repo.hasRole(userId, Role.ADMIN);
+        boolean willRemainAdmin = normalized.contains(Role.ADMIN);
+        if (targetIsAdminNow && !willRemainAdmin) {
+            int admins = repo.countUsersWithRole(Role.ADMIN);
+            if (admins <= 1) {
+                throw new CannotRemoveLastAdminException();
+            }
+        }
+
+        repo.updateRoles(userId, normalized);
+        log.info("Roles updated for user {}: {}", userId, normalized);
+    }
+}

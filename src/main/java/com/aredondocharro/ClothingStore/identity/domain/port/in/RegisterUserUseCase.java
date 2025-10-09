@@ -1,8 +1,8 @@
 package com.aredondocharro.ClothingStore.identity.domain.port.in;
 
 
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 
 public interface RegisterUserUseCase {
-    AuthResult register(Email email, String rawPassword, String confirmPassword);
+    AuthResult register(IdentityEmail email, String rawPassword, String confirmPassword);
 }

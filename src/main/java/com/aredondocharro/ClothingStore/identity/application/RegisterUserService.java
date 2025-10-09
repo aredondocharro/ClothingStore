@@ -4,7 +4,7 @@ package com.aredondocharro.ClothingStore.identity.application;
 import com.aredondocharro.ClothingStore.identity.domain.exception.EmailAlreadyExistException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordMismatchException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordRequiredException;
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
@@ -35,7 +35,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final PasswordPolicyPort passwordPolicy;
 
     @Override
-    public AuthResult register(Email email, String rawPassword, String confirmPassword) {
+    public AuthResult register(IdentityEmail email, String rawPassword, String confirmPassword) {
         // 0) Precondiciones mínimas
         if (rawPassword == null || rawPassword.isBlank()) {
             throw new PasswordRequiredException();

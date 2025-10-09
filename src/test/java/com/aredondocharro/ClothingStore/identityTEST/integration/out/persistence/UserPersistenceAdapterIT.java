@@ -2,7 +2,7 @@ package com.aredondocharro.ClothingStore.identityTEST.integration.out.persistenc
 
 
 import com.aredondocharro.ClothingStore.TestcontainersConfiguration;
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
@@ -35,7 +35,7 @@ class UserPersistenceAdapterIT {
 
     @Test
     void save_and_findById_roundtrip_rolesAndFields() {
-        User domain = new User(null, Email.of("ituser@example.com"), PasswordHash.ofHashed(HASH), false, Set.of(Role.USER, Role.ADMIN), Instant.now());
+        User domain = new User(null, IdentityEmail.of("ituser@example.com"), PasswordHash.ofHashed(HASH), false, Set.of(Role.USER, Role.ADMIN), Instant.now());
         User persisted = adapter.save(domain);
         assertNotNull(persisted.id());
         Optional<User> loaded = adapter.findById(persisted.id());
@@ -49,9 +49,9 @@ class UserPersistenceAdapterIT {
 
     @Test
     void findByEmail_roundtrip() {
-        User domain = new User(UUID.randomUUID(), Email.of("itmail@example.com"), PasswordHash.ofHashed(HASH), true, Set.of(Role.USER), Instant.now());
+        User domain = new User(UUID.randomUUID(), IdentityEmail.of("itmail@example.com"), PasswordHash.ofHashed(HASH), true, Set.of(Role.USER), Instant.now());
         adapter.save(domain);
-        Optional<User> loaded = adapter.findByEmail(Email.of("ITMAIL@example.com"));
+        Optional<User> loaded = adapter.findByEmail(IdentityEmail.of("ITMAIL@example.com"));
         assertTrue(loaded.isPresent());
         assertEquals("itmail@example.com", loaded.get().email().getValue());
         assertTrue(loaded.get().emailVerified());

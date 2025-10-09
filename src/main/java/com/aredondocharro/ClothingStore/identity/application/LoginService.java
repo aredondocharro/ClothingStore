@@ -3,7 +3,7 @@ package com.aredondocharro.ClothingStore.identity.application;
 import com.aredondocharro.ClothingStore.identity.domain.exception.EmailNotVerifiedException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.InvalidCredentialsException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordRequiredException;
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
@@ -28,7 +28,7 @@ public class LoginService implements LoginUseCase {
     private final TokenVerifierPort tokenVerifier;
 
     @Override
-    public AuthResult login(Email email, String rawPassword) {
+    public AuthResult login(IdentityEmail email, String rawPassword) {
         if (rawPassword == null || rawPassword.isBlank()) {
             throw new PasswordRequiredException();
         }

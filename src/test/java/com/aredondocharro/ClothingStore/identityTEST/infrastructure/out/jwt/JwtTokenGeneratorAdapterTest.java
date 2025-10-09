@@ -4,7 +4,7 @@ package com.aredondocharro.ClothingStore.identityTEST.infrastructure.out.jwt;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtTokenGeneratorAdapter;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
@@ -31,7 +31,7 @@ class JwtTokenGeneratorAdapterTest {
     private User makeUser(Set<Role> roles) {
         return new User(
                 UUID.randomUUID(),
-                Email.of("user@example.com"),
+                IdentityEmail.of("user@example.com"),
                 PasswordHash.ofHashed(BCRYPT),
                 true,
                 roles,

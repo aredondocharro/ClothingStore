@@ -4,6 +4,8 @@ import com.aredondocharro.ClothingStore.identity.domain.port.in.RequestPasswordR
 import com.aredondocharro.ClothingStore.identity.domain.port.out.MailerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.view.CredentialsView;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.view.UserView;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -39,10 +41,10 @@ public class RequestPasswordResetService implements RequestPasswordResetUseCase 
     @Override
     @Transactional
     public void requestReset(String email) {
-        Optional<UserRepositoryPort.UserView> userOpt = users.findByEmail(email);
+        Optional<CredentialsView> userOpt = users.findByEmail(email);
 
         if (userOpt.isPresent()) {
-            UserRepositoryPort.UserView user = userOpt.get();
+            CredentialsView user = userOpt.get();
 
             tokens.deleteAllForUser(user.id());
 
@@ -57,7 +59,7 @@ public class RequestPasswordResetService implements RequestPasswordResetUseCase 
             tokens.save(token);
 
             String link = buildResetLink(rawToken);
-            mailer.sendPasswordResetLink(user.email(), link);
+            mailer.sendPasswordResetLink(user.email().getValue(), link);
         }
         // 202 Accepted siempre en el controlador (anti-enumeración)
     }

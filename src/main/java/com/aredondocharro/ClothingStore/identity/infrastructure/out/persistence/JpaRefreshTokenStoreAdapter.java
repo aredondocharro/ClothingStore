@@ -6,6 +6,7 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataRefreshSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -26,6 +27,7 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     }
 
     @Override
+    @Transactional
     public RefreshSession saveNew(RefreshSession session, String rawRefreshToken) {
         RefreshSessionEntity entity = toEntity(session);
         entity.setTokenHash(sha256(rawRefreshToken));
@@ -34,6 +36,7 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     }
 
     @Override
+    @Transactional
     public void markReplaced(String oldJti, String newJti, Instant when) {
         RefreshSessionEntity e = repo.findById(oldJti).orElse(null);
         if (e == null) return;
@@ -43,6 +46,7 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     }
 
     @Override
+    @Transactional
     public void revoke(String jti, String reason, Instant when) {
         RefreshSessionEntity e = repo.findById(jti).orElse(null);
         if (e == null) return;
@@ -52,6 +56,7 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     }
 
     @Override
+    @Transactional
     public void revokeAllForUser(UUID userId, String reason, Instant when) {
         // naive approach; si el volumen es grande, crear query custom
         repo.findAll().stream()

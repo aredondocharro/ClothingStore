@@ -1,8 +1,9 @@
-package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo;
+package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence;
 
 
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.PasswordResetTokenEntity;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -11,9 +12,9 @@ import java.util.UUID;
 
 public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRepositoryPort {
 
-    private final SpringPasswordResetTokenJpa jpa;
+    private final SpringPasswordResetTokenJpaRepository jpa;
 
-    public PasswordResetTokenRepositoryAdapter(SpringPasswordResetTokenJpa jpa) {
+    public PasswordResetTokenRepositoryAdapter(SpringPasswordResetTokenJpaRepository jpa) {
         this.jpa = jpa;
     }
 

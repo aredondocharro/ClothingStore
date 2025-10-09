@@ -1,10 +1,8 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.in.web;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.Email; // VO correcto
-import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.LoginUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.RegisterUserUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.VerifyEmailUseCase;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail; // VO correcto
+import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.AuthResponse;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.LoginRequest;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.MessageResponse;
@@ -22,7 +20,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+
 
 @Slf4j
 @RestController
@@ -34,7 +35,10 @@ public class AuthController {
     private final RegisterUserUseCase registerUC;
     private final LoginUseCase loginUC;
     private final VerifyEmailUseCase verifyUC;
+    private final DeleteUserUseCase deleteUserUC;
     private final RefreshCookieManager cookieManager; // Gestor de cookie HttpOnly para refresh
+    private final TokenVerifierPort tokenVerifier;
+
 
     @Operation(
             summary = "Register a new user (email verification required)",
@@ -60,7 +64,7 @@ public class AuthController {
     )
     @PostMapping(path = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<MessageResponse> register(@Valid @RequestBody RegisterRequest req) {
-        final Email emailVO = Email.of(req.getEmail()); // convertir String -> VO
+        final IdentityEmail emailVO = IdentityEmail.of(req.getEmail()); // convertir String -> VO
         log.debug("POST /auth/register email={}", emailVO.getValue());
 
         registerUC.register(emailVO, req.getPassword(), req.getConfirmPassword());
@@ -94,6 +98,40 @@ public class AuthController {
         return ResponseEntity.ok(new AuthResponse(result.accessToken(), null));
     }
 
+
+    @Operation(
+            summary = "Delete account (logout from all devices)",
+            description = "Deletes the user account and all associated tokens, effectively logging out from all devices.",
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Account deleted successfully"),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized (invalid or missing token)",
+                            content = @Content(schema = @Schema(implementation = MessageResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "User not found",
+                            content = @Content(schema = @Schema(implementation = MessageResponse.class)))
+            }
+    )
+
+
+    @DeleteMapping("/delete")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MessageResponse> deleteAccount(
+            @RequestHeader("Authorization") String authHeader) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).build();
+        }
+        String accessToken = authHeader.substring(7);
+
+        // Verifica tu token ACCESS y obtén el userId del 'sub'
+        var decoded = tokenVerifier.verify(accessToken, "access");
+
+        // Borra al propietario del token (no aceptamos IDs externos)
+        deleteUserUC.delete(decoded.userId());
+
+        return ResponseEntity.ok(new MessageResponse("Account deleted successfully"));
+    }
+
+
     @Operation(
             summary = "Login with email and password",
             description = "Authenticates user. Sets refresh as HttpOnly cookie and returns access in the response body.",
@@ -109,7 +147,7 @@ public class AuthController {
     @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req,
                                               HttpServletResponse res) {
-        final Email emailVO = Email.of(req.email()); // convertir String -> VO (ajusta si tu DTO usa getters)
+        final IdentityEmail emailVO = IdentityEmail.of(req.email()); // convertir String -> VO (ajusta si tu DTO usa getters)
         log.debug("POST /auth/login email={}", emailVO.getValue());
 
         AuthResult result = loginUC.login(emailVO, req.password());

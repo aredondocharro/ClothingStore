@@ -4,7 +4,7 @@ import com.aredondocharro.ClothingStore.identity.application.LoginService;
 import com.aredondocharro.ClothingStore.identity.domain.exception.EmailNotVerifiedException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.InvalidCredentialsException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordRequiredException;
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
@@ -48,7 +48,7 @@ class LoginServiceTest {
 
     @Test
     void login_nullOrBlankPassword_throwsPasswordRequired() {
-        Email email = Email.of("user@example.com");
+        IdentityEmail email = IdentityEmail.of("user@example.com");
 
         assertAll(
                 () -> assertThrows(PasswordRequiredException.class, () -> service.login(email, null)),
@@ -61,7 +61,7 @@ class LoginServiceTest {
 
     @Test
     void login_userNotFound_throwsInvalidCredentials() {
-        Email email = Email.of("user@example.com");
+        IdentityEmail email = IdentityEmail.of("user@example.com");
         when(loadUserPort.findByEmail(email)).thenReturn(Optional.empty());
 
         assertThrows(InvalidCredentialsException.class, () -> service.login(email, "Secret123!"));
@@ -73,7 +73,7 @@ class LoginServiceTest {
 
     @Test
     void login_badPassword_throwsInvalidCredentials() {
-        Email email = Email.of("user@example.com");
+        IdentityEmail email = IdentityEmail.of("user@example.com");
 
         User user = mock(User.class);
         PasswordHash ph = mock(PasswordHash.class);
@@ -94,7 +94,7 @@ class LoginServiceTest {
 
     @Test
     void login_emailNotVerified_throwsEmailNotVerified() {
-        Email email = Email.of("user@example.com");
+        IdentityEmail email = IdentityEmail.of("user@example.com");
 
         User user = mock(User.class);
         PasswordHash ph = mock(PasswordHash.class);
@@ -116,7 +116,7 @@ class LoginServiceTest {
 
     @Test
     void login_success_generatesTokens_verifiesRefresh_andPersistsSession() {
-        Email email = Email.of("user@example.com");
+        IdentityEmail email = IdentityEmail.of("user@example.com");
 
         User user = mock(User.class);
         PasswordHash ph = mock(PasswordHash.class);

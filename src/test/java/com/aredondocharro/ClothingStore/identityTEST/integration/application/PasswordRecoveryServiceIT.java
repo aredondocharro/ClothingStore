@@ -3,16 +3,16 @@ package com.aredondocharro.ClothingStore.identityTEST.integration.application;
 import com.aredondocharro.ClothingStore.TestcontainersConfiguration;
 import com.aredondocharro.ClothingStore.identity.application.RequestPasswordResetService;
 import com.aredondocharro.ClothingStore.identity.application.ResetPasswordService;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
+import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
+import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.RequestPasswordResetUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.ResetPasswordUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.MailerPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.SessionManagerPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.PasswordResetTokenRepositoryAdapter;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpa;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.*;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.view.CredentialsView;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.view.UserView;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.PasswordResetTokenRepositoryAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -24,6 +24,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
@@ -40,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+
 @ExtendWith(SpringExtension.class)
 @DataJpaTest
 @TestPropertySource(properties = "app.reset.baseUrl=https://it.example/reset-password")
@@ -47,31 +49,42 @@ import static org.mockito.Mockito.*;
 @Import({
         TestcontainersConfiguration.class,
         PasswordResetTokenRepositoryAdapter.class,
-        PasswordRecoveryServiceIT.TestBeans.class // <<-- Beans de los nuevos servicios
+        PasswordRecoveryServiceIT.TestBeans.class
 })
 class PasswordRecoveryServiceIT {
-
-    private static final String TEST_BASE_URL = "https://it.example/reset-password";
 
     @MockBean private UserRepositoryPort users;
     @MockBean private PasswordPolicyPort passwordPolicy;
     @MockBean private SessionManagerPort sessions;
     @MockBean private PasswordHasherPort passwordHasher;
     @MockBean private MailerPort mailer;
+    @MockBean private TokenVerifierPort tokenVerifier;
 
     @Autowired private RequestPasswordResetUseCase requestPasswordResetService;
     @Autowired private ResetPasswordUseCase resetPasswordService;
+    @Autowired private SpringPasswordResetTokenJpaRepository jpa;
 
-    @Autowired private SpringPasswordResetTokenJpa jpa;
+    private static final String TEST_BASE_URL = "https://it.example/reset-password";
+    private static final BCryptPasswordEncoder BCRYPT = new BCryptPasswordEncoder(10);
 
     @Test
     void requestReset_persistsToken_andEmailsLink() throws Exception {
         // arrange
         UUID userId = UUID.randomUUID();
         String email = "u@example.com";
-        when(users.findByEmail(email)).thenReturn(
-                Optional.of(new UserRepositoryPort.UserView(userId, email, "hash", true))
+        String password = "Secret";
+        PasswordHash currentHash = hashOf(password);
+
+
+
+        CredentialsView cw = new CredentialsView(
+                userId,
+                IdentityEmail.of(email),
+                currentHash,
+                true
         );
+
+        when(users.findByEmail(email)).thenReturn(Optional.of(cw));
 
         ArgumentCaptor<String> emailCap = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> linkCap = ArgumentCaptor.forClass(String.class);
@@ -93,7 +106,7 @@ class PasswordRecoveryServiceIT {
         // fuerza flush por si el insert quedó pendiente
         jpa.flush();
 
-        // verifica que hay un token válido para ese usuario (sin duplicar la lógica de hash)
+        // verifica que hay un token válido para ese usuario
         Instant now = Instant.now();
         var all = jpa.findAll();
         boolean hasValidTokenForUser = all.stream().anyMatch(t ->
@@ -102,7 +115,7 @@ class PasswordRecoveryServiceIT {
                         && t.getExpiresAt().isAfter(now)
         );
 
-        assertTrue(hasValidTokenForUser, "Token should be stored for the user and be valid (unused and not expired)");
+        assertTrue(hasValidTokenForUser, "Token should be stored for the user and be valid");
 
         String rawToken = URLDecoder.decode(rawTokenParam, StandardCharsets.UTF_8);
         String b64 = sha256Base64(rawToken);
@@ -122,28 +135,33 @@ class PasswordRecoveryServiceIT {
         UUID userId = UUID.randomUUID();
         String rawToken = "ANY";
         String newPassword = "NewPass123!";
-        String newHash = "HASHED";
+        PasswordHash newHash = hashOf(newPassword);
 
-        String tokenHash = sha256Base64(rawToken); // mismo formato que el servicio
+
+        String tokenHash = sha256Base64(rawToken);
         PasswordResetTokenRepositoryPort.Token token =
                 new PasswordResetTokenRepositoryPort.Token(
                         UUID.randomUUID(), userId, tokenHash,
                         Instant.now().plusSeconds(1800), null, Instant.now()
                 );
 
-        // Persistimos token real en DB (adapter real)
+        // Persistimos token real en DB
         PasswordResetTokenRepositoryAdapter realAdapter = new PasswordResetTokenRepositoryAdapter(jpa);
         realAdapter.save(token);
 
-        when(users.findById(userId)).thenReturn(Optional.of(new UserRepositoryPort.UserView(
-                userId, "u@example.com", "OLD", true
-        )));
-        when(passwordHasher.hash(newPassword)).thenReturn(newHash);
+        CredentialsView cw = new CredentialsView(
+                userId,
+                IdentityEmail.of("u@example.com"),
+                newHash,
+                true
+        );
 
+        when(users.findById(userId)).thenReturn(Optional.of(cw));
+        when(passwordHasher.hash(newPassword)).thenReturn(newHash.getValue());
         resetPasswordService.reset(rawToken, newPassword);
 
         verify(passwordPolicy).validate(eq(newPassword));
-        verify(users).updatePasswordHash(eq(userId), eq(newHash));
+        verify(users).updatePasswordHash(eq(userId), eq(newHash.getValue()));
         verify(sessions).revokeAllSessions(eq(userId));
 
         // token ya no es válido tras marcar used
@@ -152,7 +170,7 @@ class PasswordRecoveryServiceIT {
         );
     }
 
-    // ----------------- Beans de test (wiring de servicios refactorizados) -----------------
+    // ----------------- Beans de test -----------------
     @TestConfiguration
     static class TestBeans {
 
@@ -175,6 +193,9 @@ class PasswordRecoveryServiceIT {
     }
 
     // ----------------- helpers -----------------
+    private static PasswordHash hashOf(String raw) {
+        return PasswordHash.ofHashed(BCRYPT.encode(raw));
+    }
 
     private static String getQueryParam(String url, String name) {
         var uri = URI.create(url);

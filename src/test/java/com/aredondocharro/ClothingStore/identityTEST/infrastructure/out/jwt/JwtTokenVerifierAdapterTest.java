@@ -1,6 +1,6 @@
 package com.aredondocharro.ClothingStore.identityTEST.infrastructure.out.jwt;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
@@ -10,7 +10,6 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtToken
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,7 +22,7 @@ class JwtTokenVerifierAdapterTest {
     private static User makeUser() {
         return User.builder()
                 .id(UUID.randomUUID())
-                .email(Email.of("user@example.com"))
+                .email(IdentityEmail.of("user@example.com"))
                 // BCrypt válido: "$2a$10$" + 53 chars [./A-Za-z0-9]
                 .passwordHash(PasswordHash.ofHashed("$2a$10$" + "a".repeat(53)))
                 .emailVerified(true)

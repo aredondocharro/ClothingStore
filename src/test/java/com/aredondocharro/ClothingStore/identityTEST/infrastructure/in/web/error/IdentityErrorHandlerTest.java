@@ -1,21 +1,24 @@
 package com.aredondocharro.ClothingStore.identityTEST.infrastructure.in.web.error;
 
 import com.aredondocharro.ClothingStore.identity.domain.exception.*;
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.AuthController;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.RefreshController;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.RefreshCookieManager;
+import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.error.IdentityGlobalErrorHandler;
+import com.aredondocharro.ClothingStore.identity.infrastructure.in.security.JwtAuthFilter;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -25,9 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -40,24 +41,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         IdentityErrorHandlerTest.ThrowingController.class
 })
 @AutoConfigureMockMvc(addFilters = false)
+@Import(IdentityGlobalErrorHandler.class)
 class IdentityErrorHandlerTest {
 
-    @Autowired
-    MockMvc mvc;
+    @Autowired MockMvc mvc;
 
-    @MockBean
-    RegisterUserUseCase registerUC;
-    @MockBean
-    LoginUseCase loginUC;
-    @MockBean
-    VerifyEmailUseCase verifyUC;
-    @MockBean
-    RefreshCookieManager cookieManager; // usado por AuthController
-    @MockBean
-    RefreshAccessTokenUseCase refreshUC;
-    @MockBean
-    LogoutUseCase logoutUC;
-
+    // ==== Mocks de TODOS los puertos usados por los controllers ====
+    @MockBean RegisterUserUseCase registerUC;
+    @MockBean LoginUseCase loginUC;
+    @MockBean VerifyEmailUseCase verifyUC;
+    @MockBean DeleteUserUseCase deleteUserUC;
+    @MockBean RequestPasswordResetUseCase requestResetUC;
+    @MockBean ResetPasswordUseCase resetPasswordUC;
+    @MockBean ChangePasswordUseCase changePasswordUC;
+    @MockBean RefreshAccessTokenUseCase refreshUC;
+    @MockBean LogoutUseCase logoutUC;
+    @MockBean RefreshCookieManager cookieManager;
+    @MockBean TokenVerifierPort tokenVerifierPort;
+    @MockBean JwtAuthFilter jwtAuthFilter;
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
@@ -98,9 +99,9 @@ class IdentityErrorHandlerTest {
     @Test
     @DisplayName("register -> EmailAlreadyExistException -> 409 identity.email_already_exists")
     void register_emailAlreadyExists_409() throws Exception {
-        // Ajusta el número de argumentos según tu use case concreto.
+        // Ajustado a firma típica: (name, email, password, confirmPassword)
         doThrow(new EmailAlreadyExistException())
-                .when(registerUC).register(any(), anyString(), anyString());
+                .when(registerUC).register(any(IdentityEmail.class), anyString(), anyString());
 
         String json = "{\"name\":\"John\",\"email\":\"user@example.com\",\"password\":\"Secret123!\",\"confirmPassword\":\"Secret123!\"}";
 
@@ -168,7 +169,6 @@ class IdentityErrorHandlerTest {
     @Test
     @DisplayName("login -> método no permitido (GET) -> 405 (sin body JSON)")
     void login_methodNotAllowed_405() throws Exception {
-        // En este punto el DispatcherServlet lanza 405 antes de llegar al Advice filtrado por basePackageClasses.
         mvc.perform(get("/auth/login"))
                 .andExpect(status().isMethodNotAllowed());
     }
@@ -199,7 +199,7 @@ class IdentityErrorHandlerTest {
     @DisplayName("register -> InvalidPasswordException -> 400 identity.invalid_password")
     void invalid_password_400() throws Exception {
         doThrow(new InvalidPasswordException("Password does not meet policy"))
-                .when(registerUC).register(any(), anyString(), anyString());
+                .when(registerUC).register(any(IdentityEmail.class), anyString(), anyString());
 
         String json = "{\"name\":\"John\",\"email\":\"user@example.com\",\"password\":\"bad\",\"confirmPassword\":\"bad\"}";
 
@@ -214,7 +214,7 @@ class IdentityErrorHandlerTest {
     @DisplayName("register -> PasswordMismatchException -> 400 identity.password_mismatch")
     void password_mismatch_400() throws Exception {
         doThrow(new PasswordMismatchException())
-                .when(registerUC).register(any(), anyString(), anyString());
+                .when(registerUC).register(any(IdentityEmail.class), anyString(), anyString());
 
         String json = "{\"name\":\"John\",\"email\":\"user@example.com\",\"password\":\"a\",\"confirmPassword\":\"b\"}";
 

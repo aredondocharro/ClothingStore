@@ -1,6 +1,6 @@
 package com.aredondocharro.ClothingStore.identityTEST.infrastructure.out.persistence;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
@@ -40,7 +40,7 @@ class UserJpaAdapterTest {
 
         User domain = new User(
                 null, // id nulo: el adapter lo rellenará
-                Email.of("user@example.com"),
+                IdentityEmail.of("user@example.com"),
                 PasswordHash.ofHashed(BCRYPT),
                 false,
                 Set.of(Role.USER, Role.ADMIN),
@@ -57,7 +57,7 @@ class UserJpaAdapterTest {
         verify(repo).save(cap.capture());
         UserEntity entity = cap.getValue();
         assertNotNull(entity.getId(), "adapter should set id if null");
-        assertTrue(entity.getRoles().containsAll(Set.of("USER", "ADMIN")));
+        assertTrue(entity.getRoles().containsAll(Set.of(Role.USER, Role.ADMIN)));
 
         // Devuelve dominio con los mismos roles
         assertEquals(Set.of(Role.USER, Role.ADMIN), saved.roles());
@@ -94,13 +94,13 @@ class UserJpaAdapterTest {
                 .email("u@example.com")
                 .passwordHash(BCRYPT)
                 .emailVerified(false)
-                .roles(new HashSet<>(List.of("USER")))
+                .roles(Set.of(Role.USER))  // ✅ Aún más directo
                 .createdAt(Instant.now())
                 .build();
 
         when(repo.findByEmailIgnoreCase("u@example.com")).thenReturn(Optional.of(entity));
 
-        Optional<User> opt = adapter.findByEmail(Email.of("u@example.com"));
+        Optional<User> opt = adapter.findByEmail(IdentityEmail.of("u@example.com"));
         assertTrue(opt.isPresent());
         User u = opt.get();
         assertEquals(id, u.id());

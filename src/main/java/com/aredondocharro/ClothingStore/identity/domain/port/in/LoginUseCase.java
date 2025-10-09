@@ -1,7 +1,7 @@
 package com.aredondocharro.ClothingStore.identity.domain.port.in;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 
 public interface LoginUseCase {
-    AuthResult login(Email email, String rawPassword);
+    AuthResult login(IdentityEmail email, String rawPassword);
 }

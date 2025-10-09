@@ -2,30 +2,20 @@ package com.aredondocharro.ClothingStore.identity.infrastructure.config;
 
 import com.aredondocharro.ClothingStore.identity.application.*;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.MailerPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.RefreshTokenStorePort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.SaveUserPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.SessionManagerPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.VerificationTokenPort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.*;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.crypto.BCryptPasswordHasherAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtTokenGeneratorAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtTokenVerifierAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtVerificationAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.mail.MailerAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.JpaRefreshTokenStoreAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserAdminRepositoryAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserPersistenceAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserRepositoryAdapter;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.PasswordResetTokenRepositoryAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.PasswordResetTokenRepositoryAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataRefreshSessionRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpa;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.NoopSessionManager;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.SimplePasswordPolicy;
 import com.aredondocharro.ClothingStore.notification.domain.port.in.SendEmailUseCase;
@@ -60,7 +50,7 @@ public class IdentityConfig {
      * Adapter para PasswordResetTokenRepositoryPort (tokens de reset)
      */
     @Bean
-    public PasswordResetTokenRepositoryPort passwordResetTokenRepositoryPort(SpringPasswordResetTokenJpa jpa) {
+    public PasswordResetTokenRepositoryPort passwordResetTokenRepositoryPort(SpringPasswordResetTokenJpaRepository jpa) {
         return new PasswordResetTokenRepositoryAdapter(jpa);
     }
 
@@ -94,6 +84,7 @@ public class IdentityConfig {
     // ========================================================================
     // Seguridad / JWT (Ports OUT)
     // ========================================================================
+
 
     @Bean
     public VerificationTokenPort verificationTokenPort(
@@ -163,6 +154,15 @@ public class IdentityConfig {
             SessionManagerPort sessions) {
         return new ChangePasswordService(users, passwordHasher, passwordPolicy, sessions);
     }
+// ========================================================================
+    // Admin user management (Port OUT)
+    // ========================================================================
+    @Bean
+    public UserAdminRepositoryPort userAdminRepositoryPort(SpringDataUserRepository repo) {
+        return new UserAdminRepositoryAdapter(repo);
+    }
+
+
 
     // ========================================================================
     // Use cases (IN)
@@ -218,5 +218,21 @@ public class IdentityConfig {
             RefreshTokenStorePort store
     ) {
         return new LogoutService(tokenVerifier, store);
+    }
+
+    //Added for admin user deletion
+    @Bean
+    public DeleteUserUseCase deleteUserUseCase(
+            UserAdminRepositoryPort userAdminRepository,
+            SessionManagerPort sessionManager
+    ) {
+        return new DeleteUserService(userAdminRepository, sessionManager);
+    }
+
+    @Bean
+    public UpdateUserRolesUseCase updateUserRolesUseCase(
+            UserAdminRepositoryPort userAdminRepository
+    ) {
+        return new UpdateUserRolesService(userAdminRepository);
     }
 }

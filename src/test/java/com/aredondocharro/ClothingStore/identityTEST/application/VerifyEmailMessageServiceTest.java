@@ -2,7 +2,7 @@ package com.aredondocharro.ClothingStore.identityTEST.application;
 
 import com.aredondocharro.ClothingStore.identity.application.VerifyEmailService;
 import com.aredondocharro.ClothingStore.identity.domain.exception.VerificationTokenInvalidException;
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
@@ -58,7 +58,7 @@ class VerifyEmailMessageServiceTest {
 
         User notVerified = new User(
                 userId,
-                Email.of("user@example.com"),
+                IdentityEmail.of("user@example.com"),
                 PasswordHash.ofHashed(BCRYPT),
                 false,
                 Set.of(Role.USER),
@@ -112,7 +112,7 @@ class VerifyEmailMessageServiceTest {
 
         User already = new User(
                 userId,
-                Email.of("user@example.com"),
+                IdentityEmail.of("user@example.com"),
                 PasswordHash.ofHashed(BCRYPT),
                 true,
                 Set.of(Role.USER),

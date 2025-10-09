@@ -1,12 +1,11 @@
 package com.aredondocharro.ClothingStore.identityTEST.infrastructure.in.web;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.LoginUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.RegisterUserUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.VerifyEmailUseCase;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.AuthController;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.RefreshCookieManager;
+import com.aredondocharro.ClothingStore.identity.infrastructure.in.security.JwtAuthFilter;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +14,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = AuthController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc(addFilters = false) // ✅ sin filtros de seguridad
 class AuthControllerTest {
 
     @Autowired
@@ -35,17 +35,18 @@ class AuthControllerTest {
     @MockBean RegisterUserUseCase registerUC;
     @MockBean LoginUseCase loginUC;
     @MockBean VerifyEmailUseCase verifyUC;
-    @MockBean
-    RefreshCookieManager cookieManager;
-
+    @MockBean RefreshCookieManager cookieManager;
+    @MockBean DeleteUserUseCase deleteUserUC;
+    @MockBean TokenVerifierPort tokenVerifier;
+    @MockBean JwtAuthFilter jwtAuthFilter;
     @Test
     void login_setsRefreshCookie_andReturnsAccessInBody() throws Exception {
-        when(loginUC.login(any(Email.class), eq("Secret123!")))
+        when(loginUC.login(any(IdentityEmail.class), eq("Secret123!")))
                 .thenReturn(new AuthResult("ACCESS", "REFRESH_COOKIE"));
 
         var json = """
-            {"email":"user@example.com","password":"Secret123!"}
-            """;
+                {"email":"user@example.com","password":"Secret123!"}
+                """;
 
         mvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -55,7 +56,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.accessToken").value("ACCESS"))
                 .andExpect(jsonPath("$.refreshToken", Matchers.nullValue()));
 
-        verify(loginUC).login(eq(Email.of("user@example.com")), eq("Secret123!"));
+        verify(loginUC).login(eq(IdentityEmail.of("user@example.com")), eq("Secret123!"));
         verify(cookieManager).setCookie(any(HttpServletResponse.class), eq("REFRESH_COOKIE"));
     }
 

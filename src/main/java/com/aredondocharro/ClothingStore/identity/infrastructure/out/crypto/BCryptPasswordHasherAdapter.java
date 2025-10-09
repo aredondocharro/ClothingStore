@@ -11,7 +11,7 @@ public class BCryptPasswordHasherAdapter implements PasswordHasherPort {
     @Override
     public String hash(String raw) {
         String h = encoder.encode(raw);
-        log.debug("Password hashed (bcrypt)"); // nunca loguees el hash ni la password
+        log.debug("Password hashed (bcrypt)");
         return h;
     }
 

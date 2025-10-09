@@ -3,12 +3,17 @@ package com.aredondocharro.ClothingStore.identityTEST.application;
 import com.aredondocharro.ClothingStore.identity.application.ChangePasswordService;
 import com.aredondocharro.ClothingStore.identity.application.RequestPasswordResetService;
 import com.aredondocharro.ClothingStore.identity.application.ResetPasswordService;
+import com.aredondocharro.ClothingStore.identity.domain.exception.NewPasswordSameAsOldException;
+import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordResetTokenInvalidException;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
+import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.MailerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.SessionManagerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.view.CredentialsView;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -18,6 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -49,10 +55,10 @@ class PasswordRecoveryServiceTest {
 
     private static final String BASE_URL_PROP = "app.reset.baseUrl";
     private static final String TEST_BASE_URL = "https://app.example/reset-password";
+    private static final BCryptPasswordEncoder BCRYPT = new BCryptPasswordEncoder(10);
 
     @BeforeEach
     void setUp() {
-        // No es estrictamente necesario tras el refactor, pero no molesta.
         System.setProperty(BASE_URL_PROP, TEST_BASE_URL);
 
         requestPasswordResetService = new RequestPasswordResetService(
@@ -77,11 +83,13 @@ class PasswordRecoveryServiceTest {
         @Test
         void whenUserExists_savesToken_deletesOld_sendsEmail() {
             UUID userId = UUID.randomUUID();
-            String email = "user@example.com";
-            UserRepositoryPort.UserView userView =
-                    new UserRepositoryPort.UserView(userId, email, "hash", true);
+            IdentityEmail email = IdentityEmail.of("user@example.com");
 
-            when(users.findByEmail(email)).thenReturn(Optional.of(userView));
+            // Hash bcrypt REAL y válido para el usuario existente
+            PasswordHash hash = hashOf("Old123!");
+            CredentialsView cw = new CredentialsView(userId, email, hash, true);
+
+            when(users.findByEmail(email.getValue())).thenReturn(Optional.of(cw));
 
             ArgumentCaptor<PasswordResetTokenRepositoryPort.Token> tokenCap =
                     ArgumentCaptor.forClass(PasswordResetTokenRepositoryPort.Token.class);
@@ -89,7 +97,7 @@ class PasswordRecoveryServiceTest {
             ArgumentCaptor<String> linkCap = ArgumentCaptor.forClass(String.class);
 
             // Act
-            requestPasswordResetService.requestReset(email);
+            requestPasswordResetService.requestReset(email.getValue());
 
             // Assert: flujo principal
             InOrder inOrder = inOrder(tokens, mailer);
@@ -97,7 +105,7 @@ class PasswordRecoveryServiceTest {
             inOrder.verify(tokens).save(tokenCap.capture());
             inOrder.verify(mailer).sendPasswordResetLink(emailCap.capture(), linkCap.capture());
 
-            assertEquals(email, emailCap.getValue());
+            assertEquals(email.getValue(), emailCap.getValue());
 
             // Validar que el link contiene el token como query param
             String link = linkCap.getValue();
@@ -146,7 +154,9 @@ class PasswordRecoveryServiceTest {
             UUID userId = UUID.randomUUID();
             String newPassword = "NewPass123!";
             String anyRawToken = "whatever-raw-token"; // el servicio hasheará internamente
-            String hashedNew = "HASHED_NEW";
+
+            // Hash bcrypt REAL para la nueva contraseña
+            String hashedNew = BCRYPT.encode(newPassword);
 
             Instant now = Instant.now();
             PasswordResetTokenRepositoryPort.Token token =
@@ -174,7 +184,7 @@ class PasswordRecoveryServiceTest {
         void withInvalidToken_throwsIllegalArgumentException() {
             when(tokens.findValidByHash(anyString(), any(Instant.class))).thenReturn(Optional.empty());
 
-            assertThrows(IllegalArgumentException.class,
+            assertThrows(PasswordResetTokenInvalidException.class,
                     () -> resetPasswordService.reset("bad-token", "NewPass123!"));
 
             verify(users, never()).updatePasswordHash(any(), any());
@@ -189,23 +199,27 @@ class PasswordRecoveryServiceTest {
         @Test
         void withCorrectCurrent_updatesAndRevokesSessions() {
             UUID userId = UUID.randomUUID();
-            String current = "Old123!";
-            String currentHash = "OLD_HASH";
-            String next = "NewPass123!";
-            String nextHash = "NEW_HASH";
+            String currentPlaintext = "Old123!";   // contraseña actual (raw)
+            PasswordHash currentHash = hashOf(currentPlaintext);
+            String nextPlaintext = "NewPass123!";  // nueva contraseña (raw)
+            String nextHashValue = BCRYPT.encode(nextPlaintext);
 
-            UserRepositoryPort.UserView userView =
-                    new UserRepositoryPort.UserView(userId, "u@example.com", currentHash, true);
+            CredentialsView cw = new CredentialsView(
+                    userId,
+                    IdentityEmail.of("u@example.com"),
+                    currentHash,
+                    true
+            );
 
-            when(users.findById(userId)).thenReturn(Optional.of(userView));
-            when(passwordHasher.matches(current, currentHash)).thenReturn(true);
-            when(passwordHasher.hash(next)).thenReturn(nextHash);
+            when(users.findById(userId)).thenReturn(Optional.of(cw));
+            when(passwordHasher.matches(currentPlaintext, currentHash.getValue())).thenReturn(true);
+            when(passwordHasher.hash(nextPlaintext)).thenReturn(nextHashValue);
 
-            changePasswordService.change(userId, current, next);
+            changePasswordService.change(userId, currentPlaintext, nextPlaintext);
 
-            verify(passwordPolicy).validate(eq(next));
+            verify(passwordPolicy).validate(eq(nextPlaintext));
             InOrder inOrder = inOrder(users, sessions);
-            inOrder.verify(users).updatePasswordHash(eq(userId), eq(nextHash));
+            inOrder.verify(users).updatePasswordHash(eq(userId), eq(nextHashValue));
             inOrder.verify(sessions).revokeAllSessions(eq(userId));
         }
 
@@ -213,16 +227,16 @@ class PasswordRecoveryServiceTest {
         void withWrongCurrent_throws_andDoesNotUpdate() {
             UUID userId = UUID.randomUUID();
             String current = "Wrong!";
-            String storedHash = "STORED";
+            PasswordHash storedHash = hashOf("Old123!");
             String next = "NewPass123!";
 
-            UserRepositoryPort.UserView userView =
-                    new UserRepositoryPort.UserView(userId, "u@example.com", storedHash, true);
+            CredentialsView userView =
+                    new CredentialsView(userId, IdentityEmail.of("u@example.com"), storedHash, true);
 
             when(users.findById(userId)).thenReturn(Optional.of(userView));
-            when(passwordHasher.matches(current, storedHash)).thenReturn(false);
+            when(passwordHasher.matches(current, storedHash.getValue())).thenReturn(false);
 
-            assertThrows(IllegalArgumentException.class,
+            assertThrows(NewPasswordSameAsOldException.class,
                     () -> changePasswordService.change(userId, current, next));
 
             verify(users, never()).updatePasswordHash(any(), any());
@@ -231,6 +245,9 @@ class PasswordRecoveryServiceTest {
     }
 
     // =================== helpers ===================
+    private static PasswordHash hashOf(String raw) {
+        return PasswordHash.ofHashed(BCRYPT.encode(raw));
+    }
 
     private static String sha256Base64(String raw) {
         try {

@@ -3,8 +3,8 @@ package com.aredondocharro.ClothingStore.identityTEST.integration.out.persistenc
 import com.aredondocharro.ClothingStore.TestcontainersConfiguration;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.PasswordResetTokenEntity;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.PasswordResetTokenRepositoryAdapter;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpa;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.PasswordResetTokenRepositoryAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class PasswordResetTokenRepositoryAdapterIT {
 
     @org.springframework.beans.factory.annotation.Autowired
-    private SpringPasswordResetTokenJpa jpa;
+    private SpringPasswordResetTokenJpaRepository jpa;
 
     @org.springframework.beans.factory.annotation.Autowired
     private PasswordResetTokenRepositoryAdapter adapter;

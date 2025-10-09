@@ -1,6 +1,6 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
@@ -29,7 +29,7 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
     // ---------------------------------------------------------------------
     // API adicional usado por tests / casos de uso (no necesariamente @Override)
     // ---------------------------------------------------------------------
-    public Optional<User> findByEmail(Email email) {
+    public Optional<User> findByEmail(IdentityEmail email) {
         log.debug("Finding user by email={}", email.getValue());
         return repo.findByEmailIgnoreCase(email.getValue()).map(this::toDomain);
     }
@@ -59,15 +59,14 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
     /* ===================== MAPPING ===================== */
 
     private User toDomain(UserEntity e) {
-        Set<String> roleStrings = (e.getRoles() == null) ? Set.of() : e.getRoles();
         // Si BD trae null o vacío, por defecto Role.USER
-        Set<Role> roles = roleStrings.isEmpty()
+        Set<Role> roles = (e.getRoles() == null || e.getRoles().isEmpty())
                 ? Set.of(Role.USER)
-                : roleStrings.stream().map(Role::from).collect(Collectors.toUnmodifiableSet());
+                : Set.copyOf(e.getRoles());  // ✅ Ya es Set<Role>, solo copia inmutable
 
         return new User(
                 e.getId(),
-                Email.of(e.getEmail()),
+                IdentityEmail.of(e.getEmail()),
                 PasswordHash.ofHashed(e.getPasswordHash()),
                 e.isEmailVerified(),
                 roles,
@@ -76,15 +75,15 @@ public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
     }
 
     private UserEntity toEntity(User u) {
-        Set<String> roles = (u.roles() == null || u.roles().isEmpty())
-                ? Set.of(Role.USER.name())
-                : u.roles().stream().map(Role::name).collect(Collectors.toSet());
+        Set<Role> roles = (u.roles() == null || u.roles().isEmpty())
+                ? Set.of(Role.USER)
+                : u.roles();
 
         UUID id = (u.id() != null) ? u.id() : UUID.randomUUID();
         Instant createdAt = (u.createdAt() != null) ? u.createdAt() : Instant.now();
 
         return UserEntity.builder()
-                .id(id) // si prefieres @PrePersist, puedes dejar null y que JPA lo rellene
+                .id(id)
                 .email(u.email().getValue())
                 .passwordHash(u.passwordHash().getValue())
                 .emailVerified(u.emailVerified())

@@ -4,7 +4,7 @@ import com.aredondocharro.ClothingStore.identity.application.RegisterUserService
 import com.aredondocharro.ClothingStore.identity.domain.exception.EmailAlreadyExistException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordMismatchException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordRequiredException;
-import com.aredondocharro.ClothingStore.identity.domain.model.Email;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
@@ -51,7 +51,7 @@ class RegisterServiceTest {
 
     @Test
     void register_nullOrBlankPassword_throwsPasswordRequired_andDoesNotHitPorts() {
-        Email email = Email.of("user@example.com");
+        IdentityEmail email = IdentityEmail.of("user@example.com");
 
         assertAll(
                 () -> assertThrows(PasswordRequiredException.class, () -> service.register(email, null, "x")),
@@ -65,7 +65,7 @@ class RegisterServiceTest {
 
     @Test
     void register_passwordsDoNotMatch_throwsPasswordMismatch_andDoesNotHashOrSave() {
-        Email email = Email.of("user@example.com");
+        IdentityEmail email = IdentityEmail.of("user@example.com");
         String raw = "Secret123!";
         String confirm = "Other123!";
 
@@ -78,7 +78,7 @@ class RegisterServiceTest {
 
     @Test
     void register_existingEmail_throwsEmailAlreadyExistException_andDoesNotHashOrSave() {
-        Email email = Email.of("user@example.com");
+        IdentityEmail email = IdentityEmail.of("user@example.com");
         String raw = "Secret123!";
 
         // simulamos que el usuario ya existe
@@ -98,7 +98,7 @@ class RegisterServiceTest {
 
     @Test
     void register_success_hashes_saves_generatesToken_and_sendsVerificationEmail() {
-        Email email = Email.of("user@example.com");
+        IdentityEmail email = IdentityEmail.of("user@example.com");
         String rawPassword = "Secret123!";
 
         when(loadUserPort.findByEmail(email)).thenReturn(Optional.empty());
