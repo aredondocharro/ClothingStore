@@ -25,10 +25,8 @@ public class UpdateUserRolesService implements UpdateUserRolesUseCase {
             throw new UserNotFoundException(userId);
         }
 
-        // Normaliza roles nulos/vacíos → USER por defecto
         Set<Role> normalized = (roles == null || roles.isEmpty()) ? Set.of(Role.USER) : roles;
 
-        // Si actualmente es ADMIN y lo vas a quitar, asegúrate de no dejar el sistema sin admins
         boolean targetIsAdminNow = repo.hasRole(userId, Role.ADMIN);
         boolean willRemainAdmin = normalized.contains(Role.ADMIN);
         if (targetIsAdminNow && !willRemainAdmin) {
