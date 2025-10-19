@@ -40,4 +40,11 @@ public final class LogSanitizer {
         if (uuid == null || uuid.length() < 8) return "***";
         return uuid.substring(0, 8) + "-****-****-****-************";
     }
+
+    public static String maskToken(String token) {
+        if (token == null) return "null";
+        int len = token.length();
+        int keep = Math.min(6, len);
+        return token.substring(0, keep) + "*** (len=" + len + ")";
+    }
 }

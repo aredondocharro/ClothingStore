@@ -1,5 +1,6 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.in.dto;
 
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

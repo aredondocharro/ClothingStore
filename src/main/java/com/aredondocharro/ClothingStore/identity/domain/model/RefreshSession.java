@@ -3,11 +3,12 @@ package com.aredondocharro.ClothingStore.identity.domain.model;
 import com.aredondocharro.ClothingStore.identity.domain.exception.RefreshSessionInvalidException;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 public record RefreshSession(
         String jti,
-        UUID userId,
+        UserId userId,
         Instant expiresAt,
         Instant createdAt,
         Instant revokedAt,
@@ -16,115 +17,100 @@ public record RefreshSession(
         String userAgent
 ) {
     public RefreshSession {
-        if (jti == null) throw RefreshSessionInvalidException.jtiRequired();
-        if (userId == null) throw RefreshSessionInvalidException.userIdRequired();
-        if (expiresAt == null) throw RefreshSessionInvalidException.expiresAtRequired();
-        if (createdAt == null) createdAt = Instant.now();
-        // revokedAt, replacedByJti, ip, userAgent pueden ser nulos inicialmente
+        if (jti == null || jti.isBlank()) throw RefreshSessionInvalidException.jtiRequired();
+        Objects.requireNonNull(userId, "userId");
+        Objects.requireNonNull(expiresAt, "expiresAt");
+        Objects.requireNonNull(createdAt, "createdAt");
+        // Asegura orden temporal coherente
+        if (!expiresAt.isAfter(createdAt)) {
+            throw new IllegalArgumentException("expiresAt must be after createdAt");
+        }
+        // revokedAt, replacedByJti, ip, userAgent pueden ser nulos
     }
 
+    /** True si está revocada (independiente de expiración). */
     public boolean isRevoked() {
         return revokedAt != null;
     }
 
+    /** True si ya está expirada respecto a 'now' (inclusivo: now >= exp ⇒ expirada). */
     public boolean isExpired(Instant now) {
-        return expiresAt.isBefore(now);
+        return !expiresAt.isAfter(Objects.requireNonNull(now));
     }
 
-    public boolean isRotated() {
-        return replacedByJti != null;
+    /** Activa = no revocada y no expirada. */
+    public boolean isActive(Instant now) {
+        return !isRevoked() && !isExpired(now);
     }
 
-    public RefreshSession revoked(Instant when) {
-        return new Builder()
-                .jti(this.jti)
-                .userId(this.userId)
-                .expiresAt(this.expiresAt)
-                .createdAt(this.createdAt)
-                .revokedAt(when != null ? when : Instant.now())
-                .replacedByJti(this.replacedByJti)
-                .ip(this.ip)
-                .userAgent(this.userAgent)
-                .build();
+    /** Devuelve una copia marcada como revocada (idempotente). */
+    public RefreshSession revoke(Instant when) {
+        Objects.requireNonNull(when, "when");
+        if (this.revokedAt != null) return this;
+        return new RefreshSession(jti, userId, expiresAt, createdAt, when, replacedByJti, ip, userAgent);
     }
 
-    public RefreshSession replacedBy(String newJti) {
-        return new Builder()
-                .jti(this.jti)
-                .userId(this.userId)
-                .expiresAt(this.expiresAt)
-                .createdAt(this.createdAt)
-                .revokedAt(this.revokedAt)
-                .replacedByJti(newJti)
-                .ip(this.ip)
-                .userAgent(this.userAgent)
-                .build();
+    /** Marca que esta sesión fue rotada por otra (nuevo jti). */
+    public RefreshSession rotatedTo(String newJti) {
+        if (newJti == null || newJti.isBlank()) {
+            throw RefreshSessionInvalidException.replacedByRequired();
+        }
+        if (this.revokedAt != null) {
+            throw new IllegalStateException("Cannot rotate a revoked session");
+        }
+        return new RefreshSession(jti, userId, expiresAt, createdAt, revokedAt, newJti, ip, userAgent);
     }
 
-    public static RefreshSession issued(String jti, UUID userId, Instant expiresAt, String ip, String userAgent) {
-        return new Builder()
-                .jti(jti)
-                .userId(userId)
-                .expiresAt(expiresAt)
-                .ip(ip)
-                .userAgent(userAgent)
-                .build(); // createdAt se rellena en el constructor si viene null
+    /* ===================== FÁBRICAS ===================== */
+
+    /**
+     * Crear una nueva sesión (emitida ahora/BAJO CONTROL de aplicación).
+     * Mantiene el orden (createdAt, expiresAt) para no romper llamadas existentes.
+     */
+    public static RefreshSession issue(String jti,
+                                       UserId userId,
+                                       Instant createdAt,
+                                       Instant expiresAt,
+                                       String ip,
+                                       String userAgent) {
+        return new RefreshSession(jti, userId, expiresAt, createdAt, null, null, ip, userAgent);
     }
 
-    public static class Builder {
-        private String jti;
-        private UUID userId;
-        private Instant expiresAt;
-        private Instant createdAt;
-        private Instant revokedAt;
-        private String replacedByJti;
-        private String ip;
-        private String userAgent;
-
-        public Builder jti(String jti) {
-            this.jti = jti;
-            return this;
-        }
-
-        public Builder userId(UUID userId) {
-            this.userId = userId;
-            return this;
-        }
-
-        public Builder expiresAt(Instant expiresAt) {
-            this.expiresAt = expiresAt;
-            return this;
-        }
-
-        public Builder createdAt(Instant createdAt) {
-            this.createdAt = createdAt;
-            return this;
-        }
-
-        public Builder revokedAt(Instant revokedAt) {
-            this.revokedAt = revokedAt;
-            return this;
-        }
-
-        public Builder replacedByJti(String replacedByJti) {
-            this.replacedByJti = replacedByJti;
-            return this;
-        }
-
-        public Builder ip(String ip) {
-            this.ip = ip;
-            return this;
-        }
-
-        public Builder userAgent(String userAgent) {
-            this.userAgent = userAgent;
-            return this;
-        }
-
-        public RefreshSession build() {
-            return new RefreshSession(jti, userId, expiresAt, createdAt, revokedAt, replacedByJti, ip, userAgent);
-        }
+    /**
+     * Crear desde un JWT decodificado. Si el token no trae 'iat', usamos 'now'.
+     */
+    public static RefreshSession fromDecoded(String jti,
+                                             UserId userId,
+                                             Instant decodedIat,
+                                             Instant decodedExp,
+                                             Instant now,
+                                             String ip,
+                                             String userAgent) {
+        Instant created = (decodedIat != null) ? decodedIat : Objects.requireNonNull(now, "now");
+        return issue(jti, userId, created, Objects.requireNonNull(decodedExp, "decodedExp"), ip, userAgent);
     }
 
+    /** Reconstrucción desde persistencia/adapters con VO de usuario. */
+    public static RefreshSession rehydrate(String jti,
+                                           UserId userId,
+                                           Instant expiresAt,
+                                           Instant createdAt,
+                                           Instant revokedAt,
+                                           String replacedByJti,
+                                           String ip,
+                                           String userAgent) {
+        return new RefreshSession(jti, userId, expiresAt, createdAt, revokedAt, replacedByJti, ip, userAgent);
+    }
 
+    /** Conveniencia para adapters que todavía reciben UUID crudo. */
+    public static RefreshSession rehydrate(String jti,
+                                           UUID userId,
+                                           Instant expiresAt,
+                                           Instant createdAt,
+                                           Instant revokedAt,
+                                           String replacedByJti,
+                                           String ip,
+                                           String userAgent) {
+        return rehydrate(jti, UserId.of(userId), expiresAt, createdAt, revokedAt, replacedByJti, ip, userAgent);
+    }
 }

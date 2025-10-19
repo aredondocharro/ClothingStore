@@ -6,39 +6,46 @@ import lombok.*;
 import java.time.Instant;
 import java.util.UUID;
 
-@Entity
-@Table(name = "refresh_session")
 @Getter @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA exige no-args
 @AllArgsConstructor
 @Builder
+@Entity
+@Table(
+        name = "refresh_session",
+        indexes = {
+                @Index(name = "idx_refresh_token_hash", columnList = "token_hash")
+                // añade los que uses realmente en queries (p.ej. user_id, revoked_at, etc.)
+        }
+)
 public class RefreshSessionEntity {
 
     @Id
-    @Column(length = 36)
+    @Column(name = "jti", length = 64, nullable = false) // 64 si JTI es UUID/hex
     private String jti;
 
-    @Column(nullable = false, columnDefinition = "uuid")
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(nullable = false)
+    @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @Column
+    @Column(name = "revoked_at")
     private Instant revokedAt;
 
-    @Column(length = 36)
+    @Column(name = "replaced_by_jti", length = 64)
     private String replacedByJti;
 
-    @Column(length = 64, nullable = false)
-    private String tokenHash; // SHA-256 hex
+    // Deja 128 si en tu esquema/migración ya está a 128 para no desalinear
+    @Column(name = "token_hash", length = 128, nullable = false)
+    private String tokenHash;  // SHA-256 hex: 64, pero 128 es “sobrado” y no rompe
 
-    @Column(length = 64)
-    private String ip;
+    @Column(name = "ip", length = 64)
+    private String ip; // suficiente para IPv6
 
-    @Column(length = 256)
-    private String userAgent;
+    @Column(name = "user_agent", length = 512)
+    private String userAgent; // 256 a veces se queda corto
 }

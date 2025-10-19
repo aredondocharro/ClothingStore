@@ -4,10 +4,7 @@ import com.aredondocharro.ClothingStore.identity.application.LoginService;
 import com.aredondocharro.ClothingStore.identity.domain.exception.EmailNotVerifiedException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.InvalidCredentialsException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordRequiredException;
-import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
-import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
-import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
-import com.aredondocharro.ClothingStore.identity.domain.model.User;
+import com.aredondocharro.ClothingStore.identity.domain.model.*;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
@@ -33,17 +30,23 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class LoginServiceTest {
 
-    @Mock LoadUserPort loadUserPort;
-    @Mock PasswordHasherPort hasher;
-    @Mock TokenGeneratorPort tokens;
-    @Mock RefreshTokenStorePort refreshStore;
-    @Mock TokenVerifierPort tokenVerifier;
-
+    @Mock
+    LoadUserPort loadUserPort;
+    @Mock
+    PasswordHasherPort hasher;
+    @Mock
+    TokenGeneratorPort tokens;
+    @Mock
+    RefreshTokenStorePort refreshStore;
+    @Mock
+    TokenVerifierPort tokenVerifier;
+    @Mock
+    java.time.Clock clock;
     LoginService service;
 
     @BeforeEach
     void setUp() {
-        service = new LoginService(loadUserPort, hasher, tokens, refreshStore, tokenVerifier);
+        service = new LoginService(loadUserPort, hasher, tokens, refreshStore, tokenVerifier, clock);
     }
 
     @Test
@@ -120,12 +123,12 @@ class LoginServiceTest {
 
         User user = mock(User.class);
         PasswordHash ph = mock(PasswordHash.class);
-        UUID userId = UUID.randomUUID();                      // ⬅️ userId para el mock
+        UUID rawUserId = UUID.randomUUID();
 
         when(user.passwordHash()).thenReturn(ph);
         when(ph.getValue()).thenReturn("$2b$10$whateverhashstring................................");
         when(user.emailVerified()).thenReturn(true);
-        when(user.id()).thenReturn(userId);                   // ⬅️ IMPORTANTE
+        when(user.id()).thenReturn(UserId.of(rawUserId));
 
         when(loadUserPort.findByEmail(email)).thenReturn(Optional.of(user));
         when(hasher.matches("Secret123!", ph.getValue())).thenReturn(true);
@@ -133,11 +136,18 @@ class LoginServiceTest {
         when(tokens.generateAccessToken(user)).thenReturn("access.jwt.token");
         when(tokens.generateRefreshToken(user)).thenReturn("refresh.jwt.token");
 
-        // Stub del decoded refresh
-        TokenVerifierPort.DecodedToken decoded = mock(TokenVerifierPort.DecodedToken.class);
-        Instant exp = Instant.now().plusSeconds(3600);
-        when(decoded.jti()).thenReturn("jti-123");
-        when(decoded.expiresAt()).thenReturn(exp);
+        // ⬇️ Fijamos el Clock que usa el servicio
+        Instant fixedNow = Instant.parse("2025-01-01T00:00:00Z");
+        when(clock.instant()).thenReturn(fixedNow);
+
+        // exp > createdAt para respetar el invariante de RefreshSession
+        Instant exp = fixedNow.plusSeconds(3600);
+        var decoded = new TokenVerifierPort.DecodedToken(
+                UserId.of(rawUserId),
+                "jti-123",
+                null,     // iat puede faltar; el servicio usa now(clock)
+                exp
+        );
         when(tokenVerifier.verify("refresh.jwt.token", "refresh")).thenReturn(decoded);
 
         AuthResult result = service.login(email, "Secret123!");
@@ -146,7 +156,6 @@ class LoginServiceTest {
         assertEquals("access.jwt.token", result.accessToken());
         assertEquals("refresh.jwt.token", result.refreshToken());
 
-        // Capturamos la sesión persistida y verificamos orden
         ArgumentCaptor<RefreshSession> cap = ArgumentCaptor.forClass(RefreshSession.class);
         InOrder inOrder = inOrder(loadUserPort, hasher, tokens, tokenVerifier, refreshStore);
         inOrder.verify(loadUserPort).findByEmail(email);
@@ -159,11 +168,10 @@ class LoginServiceTest {
 
         RefreshSession saved = cap.getValue();
         assertEquals("jti-123", saved.jti());
-        assertEquals(userId, saved.userId());                              // ⬅️ se comprueba userId
-        assertEquals(exp.getEpochSecond(), saved.expiresAt().getEpochSecond());
-        assertNotNull(saved.createdAt());
+        assertEquals(UserId.of(rawUserId), saved.userId());
+        assertEquals(exp, saved.expiresAt());
+        assertEquals(fixedNow, saved.createdAt());   // ✅ ahora no es null
         assertNull(saved.revokedAt());
         assertNull(saved.replacedByJti());
     }
-
 }

@@ -4,6 +4,7 @@ import com.aredondocharro.ClothingStore.identity.domain.exception.CannotRemoveLa
 import com.aredondocharro.ClothingStore.identity.domain.exception.SelfDemotionForbiddenException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.UserNotFoundException;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.DeleteUserUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.UpdateUserRolesUseCase;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.AdminUserController;
@@ -76,7 +77,7 @@ class AdminUserControllerTest {
     @DisplayName("DELETE /admin/users/{id} -> 204 when ADMIN and user exists")
     void delete_admin_success_204() throws Exception {
         UUID id = UUID.randomUUID();
-        doNothing().when(deleteUC).delete(id);
+        doNothing().when(deleteUC).delete(UserId.of(id));
 
         mvc.perform(delete("/admin/users/{id}", id)
                         .with(user("admin").roles("ADMIN")))
@@ -86,7 +87,7 @@ class AdminUserControllerTest {
     @Test
     @DisplayName("DELETE /admin/users/{id} -> 404 identity.user_not_found")
     void delete_admin_not_found_404() throws Exception {
-        UUID id = UUID.randomUUID();
+        UserId id = UserId.newId();
         doThrow(new UserNotFoundException(id)).when(deleteUC).delete(id);
 
         mvc.perform(delete("/admin/users/{id}", id)
@@ -130,7 +131,7 @@ class AdminUserControllerTest {
         UUID id = UUID.randomUUID();
         String json = "{ \"roles\": [\"USER\", \"ADMIN\"] }";
 
-        doNothing().when(rolesUC).setRoles(id, Set.of(Role.USER, Role.ADMIN));
+        doNothing().when(rolesUC).setRoles(UserId.of(id), Set.of(Role.USER, Role.ADMIN));
 
         mvc.perform(put("/admin/users/{id}/roles", id)
                         .with(user("admin").roles("ADMIN"))
@@ -178,7 +179,7 @@ class AdminUserControllerTest {
     @Test
     @DisplayName("PUT /admin/users/{id}/roles -> 404 identity.user_not_found")
     void setRoles_not_found_404() throws Exception {
-        UUID id = UUID.randomUUID();
+        UserId id = UserId.newId();
         String json = "{ \"roles\": [\"USER\"] }";
 
         doThrow(new UserNotFoundException(id)).when(rolesUC).setRoles(id, Set.of(Role.USER));
@@ -197,7 +198,7 @@ class AdminUserControllerTest {
         UUID id = UUID.randomUUID();
         String json = "{ \"roles\": [\"USER\"] }";
 
-        doThrow(new CannotRemoveLastAdminException()).when(rolesUC).setRoles(id, Set.of(Role.USER));
+        doThrow(new CannotRemoveLastAdminException()).when(rolesUC).setRoles(UserId.of(id), Set.of(Role.USER));
 
         mvc.perform(put("/admin/users/{id}/roles", id)
                         .with(user("admin").roles("ADMIN"))
@@ -213,7 +214,7 @@ class AdminUserControllerTest {
         UUID id = UUID.randomUUID();
         String json = "{ \"roles\": [\"USER\"] }";
 
-        doThrow(new SelfDemotionForbiddenException()).when(rolesUC).setRoles(id, Set.of(Role.USER));
+        doThrow(new SelfDemotionForbiddenException()).when(rolesUC).setRoles(UserId.of(id), Set.of(Role.USER));
 
         mvc.perform(put("/admin/users/{id}/roles", id)
                         .with(user("admin").roles("ADMIN"))

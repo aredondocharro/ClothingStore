@@ -1,6 +1,7 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo;
 
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.UserEntity;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;

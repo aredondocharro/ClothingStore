@@ -1,11 +1,12 @@
 package com.aredondocharro.ClothingStore.identity.domain.port.in;
 
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 
 import java.util.Set;
-import java.util.UUID;
+
 
 public interface UpdateUserRolesUseCase {
-    void setRoles(UUID userId, Set<Role> roles);
+    void setRoles(UserId userId, Set<Role> roles);
 }
 

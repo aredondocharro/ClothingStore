@@ -2,8 +2,8 @@ package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence
 
 import com.aredondocharro.ClothingStore.identity.domain.exception.UserNotFoundException;
 import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
-import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserAdminRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.view.UserView;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.UserEntity;
@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -25,13 +24,13 @@ public class UserAdminRepositoryAdapter implements UserAdminRepositoryPort {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean existsById(UUID id) {
-        return repo.existsById(id);
+    public boolean existsById(UserId id) {
+        return repo.existsById(id.value());
     }
     @Override
     @Transactional
-    public Optional<UserView> findById(UUID id) {
-        Optional<UserEntity> opt = repo.findById(id);
+    public Optional<UserView> findById(UserId id) {
+        Optional<UserEntity> opt = repo.findById(id.value());
         if (opt.isEmpty()) {
             log.debug("User not found id={}", id);
             return Optional.empty();
@@ -49,20 +48,20 @@ public class UserAdminRepositoryAdapter implements UserAdminRepositoryPort {
 
     @Override
     @Transactional
-    public boolean deleteById(UUID id) {
-        if (!repo.existsById(id)) {
+    public boolean deleteById(UserId id) {
+        if (!repo.existsById(id.value())) {
             log.warn("Attempted to delete non-existent user with id={}", id);
             return false;
         }
-        repo.deleteById(id);
+        repo.deleteById(id.value());
         log.info("User deleted successfully: id={}", id);
         return true;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean hasRole(UUID id, Role role) {
-        return repo.userHasRole(id, role);
+    public boolean hasRole(UserId id, Role role) {
+        return repo.userHasRole(id.value(), role);
     }
 
     @Override
@@ -73,8 +72,8 @@ public class UserAdminRepositoryAdapter implements UserAdminRepositoryPort {
 
     @Override
     @Transactional
-    public void updateRoles(UUID id, Set<Role> roles) {
-        UserEntity entity = repo.findById(id)
+    public void updateRoles(UserId id, Set<Role> roles) {
+        UserEntity entity = repo.findById(id.value())
                 .orElseThrow(() -> new UserNotFoundException(id));
 
         Set<Role> oldRoles = entity.getRoles();

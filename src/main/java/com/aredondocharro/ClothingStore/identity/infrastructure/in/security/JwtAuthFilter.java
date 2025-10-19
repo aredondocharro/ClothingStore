@@ -1,6 +1,7 @@
 // src/main/java/com/aredondocharro/ClothingStore/shared/security/JwtAuthFilter.java
 package com.aredondocharro.ClothingStore.identity.infrastructure.in.security;
 
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.servlet.FilterChain;
@@ -49,7 +50,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             // 🔹 Usa tu adapter para verificar el token
             var decoded = tokenVerifier.verify(token, "access");
-            UUID userId = decoded.userId();
+            UserId userId = decoded.userId();
             DecodedJWT jwt = com.auth0.jwt.JWT.decode(token);
 
             // 🔹 Extrae roles del claim

@@ -12,4 +12,8 @@ public class RefreshSessionInvalidException extends RuntimeException {
     public static RefreshSessionInvalidException expiresAtRequired() {
         return new RefreshSessionInvalidException("expiresAt is required");
     }
+
+    public static RefreshSessionInvalidException replacedByRequired(){
+        return new RefreshSessionInvalidException("replacedBy is required");
+    }
 }

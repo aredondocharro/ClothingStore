@@ -1,7 +1,8 @@
 package com.aredondocharro.ClothingStore.identity.domain.port.in;
 
-import java.util.UUID;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
+
 
 public interface ChangePasswordUseCase {
-    void change(UUID userId, String currentPassword, String newPassword);
+    void change(UserId userId, String currentPassword, String newPassword);
 }

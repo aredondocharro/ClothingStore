@@ -1,6 +1,7 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence;
 
 import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.RefreshTokenStorePort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.RefreshSessionEntity;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataRefreshSessionRepository;
@@ -13,7 +14,6 @@ import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Optional;
-import java.util.UUID;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -22,7 +22,9 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     private final SpringDataRefreshSessionRepository repo;
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<RefreshSession> findByJti(String jti) {
+        // si jti es @Id en la entidad, también valdría repo.findById(jti)
         return repo.findByJti(jti).map(this::toDomain);
     }
 
@@ -30,7 +32,7 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     @Transactional
     public RefreshSession saveNew(RefreshSession session, String rawRefreshToken) {
         RefreshSessionEntity entity = toEntity(session);
-        entity.setTokenHash(sha256(rawRefreshToken));
+        entity.setTokenHash(sha256(rawRefreshToken)); // hex 64 chars
         RefreshSessionEntity saved = repo.save(entity);
         return toDomain(saved);
     }
@@ -38,52 +40,53 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     @Override
     @Transactional
     public void markReplaced(String oldJti, String newJti, Instant when) {
-        RefreshSessionEntity e = repo.findById(oldJti).orElse(null);
-        if (e == null) return;
-        e.setRevokedAt(when);
-        e.setReplacedByJti(newJti);
-        repo.save(e);
+        repo.findById(oldJti).ifPresent(e -> {
+            e.setRevokedAt(when);
+            e.setReplacedByJti(newJti);
+            repo.save(e);
+        });
     }
 
     @Override
     @Transactional
     public void revoke(String jti, String reason, Instant when) {
-        RefreshSessionEntity e = repo.findById(jti).orElse(null);
-        if (e == null) return;
-        e.setRevokedAt(when);
-        repo.save(e);
-        log.info("Refresh revoked jti={} reason={}", jti, reason);
+        repo.findById(jti).ifPresent(e -> {
+            if (e.getRevokedAt() == null) {
+                e.setRevokedAt(when);
+                repo.save(e);
+                log.info("Refresh revoked jti={} reason={}", jti, reason);
+            }
+        });
     }
 
     @Override
     @Transactional
-    public void revokeAllForUser(UUID userId, String reason, Instant when) {
-        // naive approach; si el volumen es grande, crear query custom
-        repo.findAll().stream()
-                .filter(e -> userId.equals(e.getUserId()))
-                .filter(e -> e.getRevokedAt() == null)
-                .forEach(e -> { e.setRevokedAt(when); repo.save(e); });
-        log.warn("All refresh sessions revoked for userId={} reason={}", userId, reason);
+    public void revokeAllForUser(UserId userId, String reason, Instant when) {
+        // Versión eficiente por UPDATE masivo
+        int n = repo.revokeAllForUser(userId.value(), when);
+        log.warn("All refresh sessions revoked for userId={} reason={} updated={}", userId, reason, n);
     }
+
+    /* ===================== mapping ===================== */
 
     private RefreshSessionEntity toEntity(RefreshSession s) {
         return RefreshSessionEntity.builder()
                 .jti(s.jti())
-                .userId(s.userId())
+                .userId(s.userId().value())            // VO -> UUID
                 .expiresAt(s.expiresAt())
                 .createdAt(s.createdAt())
                 .revokedAt(s.revokedAt())
                 .replacedByJti(s.replacedByJti())
                 .ip(s.ip())
                 .userAgent(s.userAgent())
-                .tokenHash("unset")
+                .tokenHash("unset") // se setea arriba con el hash real
                 .build();
     }
 
     private RefreshSession toDomain(RefreshSessionEntity e) {
         return new RefreshSession(
                 e.getJti(),
-                e.getUserId(),
+                UserId.of(e.getUserId()),              // UUID -> VO
                 e.getExpiresAt(),
                 e.getCreatedAt(),
                 e.getRevokedAt(),
@@ -97,7 +100,7 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] bytes = md.digest(input.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(bytes);
+            return HexFormat.of().formatHex(bytes); // 64 chars hex
         } catch (Exception e) {
             throw new IllegalStateException("SHA-256 not available", e);
         }

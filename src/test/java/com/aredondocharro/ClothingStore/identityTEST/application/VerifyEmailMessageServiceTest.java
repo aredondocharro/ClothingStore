@@ -2,11 +2,7 @@ package com.aredondocharro.ClothingStore.identityTEST.application;
 
 import com.aredondocharro.ClothingStore.identity.application.VerifyEmailService;
 import com.aredondocharro.ClothingStore.identity.domain.exception.VerificationTokenInvalidException;
-import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
-import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
-import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
-import com.aredondocharro.ClothingStore.identity.domain.model.Role;
-import com.aredondocharro.ClothingStore.identity.domain.model.User;
+import com.aredondocharro.ClothingStore.identity.domain.model.*;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.RefreshTokenStorePort;
@@ -22,7 +18,9 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -40,7 +38,7 @@ class VerifyEmailMessageServiceTest {
     @Mock TokenGeneratorPort tokens;
     @Mock RefreshTokenStorePort refreshStore;
     @Mock TokenVerifierPort tokenVerifier;
-
+    @Mock java.time.Clock clock;
     VerifyEmailService service;
 
     private static final String BCRYPT =
@@ -48,13 +46,18 @@ class VerifyEmailMessageServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new VerifyEmailService(verifier, loadUserPort, saveUserPort, tokens, refreshStore, tokenVerifier);
+        Instant fixedNow = Instant.parse("2025-01-01T00:00:00Z");
+        Clock fixedClock = Clock.fixed(fixedNow, ZoneOffset.UTC);
+
+        service = new VerifyEmailService(
+                verifier, loadUserPort, saveUserPort, tokens, refreshStore, tokenVerifier, fixedClock
+        );
     }
 
     @Test
     void verify_success_marksVerified_generatesTokens_andPersistsRefreshSession() {
-        UUID userId = UUID.randomUUID();
-        when(verifier.validateAndExtractUserId("tok")).thenReturn(userId);
+        UserId userId = UserId.newId();
+        when(verifier.validateAndExtractUserId("tok")).thenReturn(userId.value());
 
         User notVerified = new User(
                 userId,
@@ -107,8 +110,8 @@ class VerifyEmailMessageServiceTest {
 
     @Test
     void verify_alreadyVerified_generatesTokens_andPersistsRefreshSession_withoutSavingUser() {
-        UUID userId = UUID.randomUUID();
-        when(verifier.validateAndExtractUserId("tok")).thenReturn(userId);
+    UserId userId = UserId.of(UUID.randomUUID());
+        when(verifier.validateAndExtractUserId("tok")).thenReturn(userId.value());
 
         User already = new User(
                 userId,
@@ -118,7 +121,7 @@ class VerifyEmailMessageServiceTest {
                 Set.of(Role.USER),
                 Instant.now()
         );
-        when(loadUserPort.findById(userId)).thenReturn(Optional.of(already));
+        when(loadUserPort.findById(UserId.of(userId.value()))).thenReturn(Optional.of(already));
 
         when(tokens.generateAccessToken(already)).thenReturn("access");
         when(tokens.generateRefreshToken(already)).thenReturn("refresh");
@@ -150,7 +153,7 @@ class VerifyEmailMessageServiceTest {
     void verify_userNotFound_throwsVerificationTokenInvalid_andDoesNotGenerateTokensNorPersist() {
         UUID userId = UUID.randomUUID();
         when(verifier.validateAndExtractUserId("bad")).thenReturn(userId);
-        when(loadUserPort.findById(userId)).thenReturn(Optional.empty());
+        when(loadUserPort.findById(UserId.of(userId))).thenReturn(Optional.empty());
 
         assertThrows(VerificationTokenInvalidException.class, () -> service.verify("bad"));
 

@@ -9,33 +9,37 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+@Getter @Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // requerido por JPA
+@AllArgsConstructor // Utilizamos AllArgsConstructor para el builder en JPA en combinación con @Builder y @NoArgsConstructor
+@Builder
 @Entity
 @Table(name = "users")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
-@Builder
 public class UserEntity {
+
     @Id
+    @Column(name = "id", nullable = false, columnDefinition = "uuid")
     private UUID id;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "email", nullable = false, unique = true, length = 255)
     private String email;
 
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Column(nullable = false)
+    @Column(name = "email_verified", nullable = false)
     private boolean emailVerified;
 
-    @ElementCollection(fetch = FetchType.EAGER) // o LAZY si prefieres
+    @ElementCollection(fetch = FetchType.LAZY) // mejor LAZY; usa EAGER si realmente lo necesitas
     @CollectionTable(
             name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id", nullable = false)
     )
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 50)
-    private Set<Role> roles = new HashSet<>();     // ✅ Cambiado: Set<String> → Set<Role>
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>(); // ← evita nulls cuando usas builder()
 
-    @Column(nullable = false)
-    private Instant createdAt;
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt; // ← lo trae la capa de aplicación
 }

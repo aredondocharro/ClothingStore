@@ -17,6 +17,9 @@ import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Clock;
+import java.time.Instant;
+
 @Slf4j
 @RequiredArgsConstructor
 public class LoginService implements LoginUseCase {
@@ -26,38 +29,36 @@ public class LoginService implements LoginUseCase {
     private final TokenGeneratorPort tokens;
     private final RefreshTokenStorePort refreshStore;
     private final TokenVerifierPort tokenVerifier;
+    private final Clock clock;
 
     @Override
     public AuthResult login(IdentityEmail email, String rawPassword) {
-        if (rawPassword == null || rawPassword.isBlank()) {
-            throw new PasswordRequiredException();
-        }
+        if (rawPassword == null || rawPassword.isBlank()) throw new PasswordRequiredException();
 
         log.debug("Login attempt email={}", email.getValue());
 
-        User user = loadUserPort.findByEmail(email)
-                .orElseThrow(InvalidCredentialsException::new);
+        User user = loadUserPort.findByEmail(email).orElseThrow(InvalidCredentialsException::new);
 
         if (!hasher.matches(rawPassword, user.passwordHash().getValue())) {
             log.warn("Login failed email (Bad password) ={}", LogSanitizer.maskEmail(email.getValue()));
             throw new InvalidCredentialsException();
         }
+        if (!user.emailVerified()) throw new EmailNotVerifiedException();
 
-        if (!user.emailVerified()) {
-            throw new EmailNotVerifiedException();
-        }
-
-        String accessToken = tokens.generateAccessToken(user);
+        String accessToken  = tokens.generateAccessToken(user);
         String refreshToken = tokens.generateRefreshToken(user);
 
-        // Decodifica el refresh recién emitido y persiste la sesión (jti/exp).
+        // Decodifica el refresh y persiste la sesión
         TokenVerifierPort.DecodedToken decoded = tokenVerifier.verify(refreshToken, "refresh");
-        RefreshSession session = RefreshSession.issued(
-                decoded.jti(),           // jti
-                user.id(),               // userId
-                decoded.expiresAt(),     // expiresAt
-                null,                    // ip (si la quieres guardar, pásala desde el controller)
-                null                     // userAgent
+
+        // Fallback seguro para createdAt (iat puede no venir)
+
+        RefreshSession session = RefreshSession.issue(
+                decoded.jti(),
+                user.id(),
+                Instant.now(clock),
+                decoded.expiresAt(),
+                null, null
         );
         refreshStore.saveNew(session, refreshToken);
 

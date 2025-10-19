@@ -7,7 +7,6 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.crypto.BCryp
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtTokenGeneratorAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtTokenVerifierAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtVerificationAdapter;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.mail.MailerAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.JpaRefreshTokenStoreAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserAdminRepositoryAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserPersistenceAdapter;
@@ -18,10 +17,14 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.NoopSessionManager;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.SimplePasswordPolicy;
-import com.aredondocharro.ClothingStore.notification.domain.port.in.SendEmailUseCase;
+import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.time.Clock;
+import java.time.Duration;
+
 
 @Configuration
 public class IdentityConfig {
@@ -60,17 +63,6 @@ public class IdentityConfig {
     @Bean
     public PasswordHasherPort passwordHasherPort() {
         return new BCryptPasswordHasherAdapter();
-    }
-
-    /**
-     * Envío de correos usando el caso de uso de notificaciones
-     */
-    @Bean
-    public MailerPort mailerPort(SendEmailUseCase sendEmail,
-                                 @Value("${mail.from:no-reply@clothingstore.local}") String from,
-                                 @Value("${mail.templates.verify-email:verify-email}") String verifyTpl,
-                                 @Value("${mail.templates.password-reset:password-reset}") String resetTpl) {
-        return new MailerAdapter(sendEmail, from, verifyTpl, resetTpl);
     }
 
     /**
@@ -131,9 +123,12 @@ public class IdentityConfig {
     RequestPasswordResetUseCase requestPasswordResetUseCase(
             UserRepositoryPort users,
             PasswordResetTokenRepositoryPort tokens,
-            MailerPort mailer,
-            @Value("${app.reset.baseUrl}") String baseUrl) {
-        return new RequestPasswordResetService(users, tokens, mailer, baseUrl);
+            EventBusPort eventBus,
+            @Value("${app.reset.baseUrl}") String baseUrl,
+            Clock clock,
+            @Value("${app.reset.ttl}") Duration ttl
+    ) {
+        return new RequestPasswordResetService(users, tokens, eventBus, baseUrl, clock, ttl);
     }
 
     @Bean
@@ -142,8 +137,10 @@ public class IdentityConfig {
             PasswordPolicyPort passwordPolicy,
             UserRepositoryPort users,
             PasswordHasherPort passwordHasher,
-            SessionManagerPort sessions) {
-        return new ResetPasswordService(tokens, passwordPolicy, users, passwordHasher, sessions);
+            SessionManagerPort sessions,
+            Clock clock
+    ) {
+        return new ResetPasswordService(tokens, passwordPolicy, users, passwordHasher, sessions, clock);
     }
 
     @Bean
@@ -168,28 +165,28 @@ public class IdentityConfig {
     // Use cases (IN)
     // ========================================================================
 
+    // dentro de IdentityConfig
     @Bean
     public RegisterUserUseCase registerUserUseCase(
             LoadUserPort loadUserPort,
             SaveUserPort saveUserPort,
             PasswordHasherPort hasher,
-            TokenGeneratorPort tokens,
-            MailerPort mailer,
-            @Value("${app.verify.baseUrl}") String verifyBaseUrl,
-            PasswordPolicyPort passwordPolicy // <-- NUEVO
+            PasswordPolicyPort passwordPolicy,
+            Clock clock,
+            EventBusPort eventBus
     ) {
-        return new RegisterUserService(
-                loadUserPort, saveUserPort, hasher, tokens, mailer, verifyBaseUrl, passwordPolicy
-        );
+        return new RegisterUserService(loadUserPort, saveUserPort, hasher, passwordPolicy, clock, eventBus);
     }
+
 
     @Bean
     public LoginUseCase loginUseCase(LoadUserPort loadUserPort,
                                      PasswordHasherPort hasher,
                                      TokenGeneratorPort tokens,
                                      RefreshTokenStorePort store,
-                                     TokenVerifierPort verifier) {
-        return new LoginService(loadUserPort, hasher, tokens, store, verifier);
+                                     TokenVerifierPort verifier,
+                                     Clock clock) {
+        return new LoginService(loadUserPort, hasher, tokens, store, verifier, clock);
     }
 
     @Bean
@@ -198,9 +195,11 @@ public class IdentityConfig {
                                                  SaveUserPort saveUserPort,
                                                  TokenGeneratorPort tokens,
                                                  RefreshTokenStorePort store,
-                                                 TokenVerifierPort verifier) {
-        return new VerifyEmailService(verifierToken, loadUserPort, saveUserPort, tokens, store, verifier);
+                                                 TokenVerifierPort verifier,
+                                                 Clock clock) {
+        return new VerifyEmailService(verifierToken, loadUserPort, saveUserPort, tokens, store, verifier, clock);
     }
+
 
     @Bean
     public RefreshAccessTokenUseCase refreshAccessTokenUseCase(

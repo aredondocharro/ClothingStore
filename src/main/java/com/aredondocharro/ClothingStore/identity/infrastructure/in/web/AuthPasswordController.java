@@ -1,11 +1,14 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.in.web;
 
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.ChangePasswordUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.RequestPasswordResetUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.ResetPasswordUseCase;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.ChangePasswordRequest;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.ForgotPasswordRequest;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.ResetPasswordRequest;
+import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -47,50 +50,40 @@ public class AuthPasswordController {
     @ApiResponse(responseCode = "202", description = "If the email exists, instructions are sent.")
     @PostMapping(value = "/password/forgot", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> forgot(@Valid @RequestBody ForgotPasswordRequest req) {
-        log.debug("Password FORGOT requested for email={}", maskEmail(req.email()));
-        requestReset.requestReset(req.email());
-        log.info("Password FORGOT accepted for email={} (anti-enumeration response 202)", maskEmail(req.email()));
+        // Convertimos String -> VO
+        IdentityEmail email = IdentityEmail.of(req.email());
+
+        log.debug("Password FORGOT requested for email={}", maskEmail(email.getValue()));
+        // El caso de uso suele aceptar el VO
+        requestReset.requestReset(email);
+
+        log.info("Password FORGOT accepted for email={} (anti-enumeration 202)", maskEmail(email.getValue()));
         return ResponseEntity.accepted().build();
     }
 
-    @Operation(
-            summary = "Reset: apply a new password using the token"
-    )
+    @Operation(summary = "Reset: apply a new password using the token")
     @ApiResponse(responseCode = "204", description = "Password successfully reset.")
     @ApiResponse(responseCode = "400", description = "Invalid or expired token.", content = @Content)
     @PostMapping(value = "/password/reset", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> reset(@RequestParam("token") String token,
                                       @Valid @RequestBody ResetPasswordRequest req) {
-        log.debug("Password RESET called with token={}", maskToken(token));
+        log.debug("Password RESET called with token={}...", LogSanitizer.maskToken(token));
         resetPassword.reset(token, req.newPassword());
         log.info("Password RESET completed (token consumed)");
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(
-            summary = "Change: change password (authenticated user)"
-    )
+    @Operation(summary = "Change: change password (authenticated user)")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponse(responseCode = "204", description = "Password changed.")
     @ApiResponse(responseCode = "400", description = "Current password is incorrect.", content = @Content)
     @PostMapping(value = "/password/change", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> change(Authentication auth,
                                        @Valid @RequestBody ChangePasswordRequest req) {
-        // NOTE: if auth.getName() is not a UUID, extract your real user ID from the principal
-        UUID userId = UUID.fromString(auth.getName());
+        UserId userId = UserId.of(UUID.fromString(auth.getName()));
         log.debug("Password CHANGE requested by userId={}", userId);
         changePassword.change(userId, req.currentPassword(), req.newPassword());
         log.info("Password CHANGE completed for userId={}", userId);
         return ResponseEntity.noContent().build();
-    }
-
-    // ---------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------
-    private static String maskToken(String token) {
-        if (token == null) return "null";
-        int len = token.length();
-        int keep = Math.min(6, len);
-        return token.substring(0, keep) + "*** (len=" + len + ")";
     }
 }

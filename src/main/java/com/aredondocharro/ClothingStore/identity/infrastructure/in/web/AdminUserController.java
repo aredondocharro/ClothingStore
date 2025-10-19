@@ -1,6 +1,7 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.in.web;
 
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.DeleteUserUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.UpdateUserRolesUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.view.UserView;
@@ -47,7 +48,7 @@ public class AdminUserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         log.info("ADMIN | delete request | userId={}", id);
-        deleteUC.delete(id);
+        deleteUC.delete(UserId.of(id));
         log.info("ADMIN | delete success | userId={}", id);
         return ResponseEntity.noContent().build();
     }
@@ -73,7 +74,7 @@ public class AdminUserController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid role value");
         }
 
-        rolesUC.setRoles(id, roles);
+        rolesUC.setRoles(UserId.of(id), roles);
         return ResponseEntity.noContent().build();
     }
 

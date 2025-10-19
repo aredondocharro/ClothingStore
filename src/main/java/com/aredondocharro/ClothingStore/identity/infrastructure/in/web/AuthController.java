@@ -70,7 +70,7 @@ public class AuthController {
         registerUC.register(emailVO, req.getPassword(), req.getConfirmPassword());
 
 
-        log.info("Registration accepted for email={}", LogSanitizer.maskEmail(emailVO.getValue()));
+        log.info("Registration accepted for email={}, pending verification", LogSanitizer.maskEmail(emailVO.getValue()));
         return ResponseEntity.accepted()
                 .body(new MessageResponse("Check your email to verify your account."));
     }

@@ -1,6 +1,6 @@
-// src/main/java/com/aredondocharro/ClothingStore/identity/application/RegisterUserService.java
 package com.aredondocharro.ClothingStore.identity.application;
 
+import com.aredondocharro.ClothingStore.identity.contracts.event.UserRegistered;
 import com.aredondocharro.ClothingStore.identity.domain.exception.EmailAlreadyExistException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordMismatchException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordRequiredException;
@@ -8,18 +8,22 @@ import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.Role;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.RegisterUserUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.MailerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.SaveUserPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorPort;
+
+import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
 import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Set;
 
 @Slf4j
@@ -29,52 +33,33 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final LoadUserPort loadUserPort;
     private final SaveUserPort saveUserPort;
     private final PasswordHasherPort hasher;
-    private final TokenGeneratorPort tokens;
-    private final MailerPort mailer;
-    private final String verifyBaseUrl;
     private final PasswordPolicyPort passwordPolicy;
+    private final Clock clock;
+    private final EventBusPort eventBus;
 
     @Override
+    @Transactional
     public AuthResult register(IdentityEmail email, String rawPassword, String confirmPassword) {
-        // 0) Precondiciones mínimas
-        if (rawPassword == null || rawPassword.isBlank()) {
-            throw new PasswordRequiredException();
-        }
-
-        // 1) Política de contraseña (una sola fuente de verdad)
+        if (rawPassword == null || rawPassword.isBlank()) throw new PasswordRequiredException();
         passwordPolicy.validate(rawPassword);
-
-        // 2) Coincidencia (si confirm viene null/blanco → mismatch)
-        if (confirmPassword == null || !rawPassword.equals(confirmPassword)) {
-            throw new PasswordMismatchException();
-        }
-
-        // 3) Unicidad del email
+        if (confirmPassword == null || !rawPassword.equals(confirmPassword)) throw new PasswordMismatchException();
         loadUserPort.findByEmail(email).ifPresent(u -> { throw new EmailAlreadyExistException(); });
 
-        // 4) Hash
         String bcrypt = hasher.hash(rawPassword);
         PasswordHash hashVO = PasswordHash.ofHashed(bcrypt);
 
-        // 5) Construir y persistir
-        User toSave = new User(
-                null,              // id (lo setea la persistencia)
-                email,
-                hashVO,
-                false,             // emailVerified
-                Set.of(Role.USER), // roles iniciales
-                null               // createdAt (si lo gestionas en DB)
-        );
-        User saved = saveUserPort.save(toSave);
+        UserId userId = UserId.newId();
+        Instant now = Instant.now(clock);      // ← tiempo en aplicación
 
-        // 6) Token de verificación + enviar email
-        String verification = tokens.generateVerificationToken(saved);
-        String url = verifyBaseUrl + "?token=" + verification;
-        mailer.sendVerificationEmail(saved.email().getValue(), url);
+        // Factory with semantics (add this in User)
+        User user = User.create(userId, email, hashVO, Set.of(Role.USER), now);
+        User saved = saveUserPort.save(user);
 
-        log.info("User registered id={} email={}", saved.id(), LogSanitizer.maskEmail(saved.email().getValue()));
+        // (Direct email for now; replace with domain event when ready)
+        eventBus.publish(new UserRegistered(userId, email, now));
 
-        // 7) Sin autologin en register
+        log.info("PUBLISHED: User registered id={} email={}", saved.id(), LogSanitizer.maskEmail(saved.email().getValue()));
         return new AuthResult(null, null);
     }
 }
+

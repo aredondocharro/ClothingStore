@@ -1,11 +1,7 @@
 package com.aredondocharro.ClothingStore.identityTEST.integration.out.persistence;
 
-
 import com.aredondocharro.ClothingStore.TestcontainersConfiguration;
-import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
-import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
-import com.aredondocharro.ClothingStore.identity.domain.model.Role;
-import com.aredondocharro.ClothingStore.identity.domain.model.User;
+import com.aredondocharro.ClothingStore.identity.domain.model.*;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserPersistenceAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import org.junit.jupiter.api.Test;
@@ -18,7 +14,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
+
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -27,19 +23,34 @@ import static org.junit.jupiter.api.Assertions.*;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({TestcontainersConfiguration.class, UserPersistenceAdapter.class})
 class UserPersistenceAdapterIT {
+
     @org.springframework.beans.factory.annotation.Autowired
     private SpringDataUserRepository repo;
+
     @org.springframework.beans.factory.annotation.Autowired
     private UserPersistenceAdapter adapter;
-    private static final String HASH = "$2b$10$7EqJtq98hPqEX7fNZaFWoO5f.Pg3rQAYyu3iJ/T9Y2aXx1Z9E6iGa";
+
+    private static final String HASH =
+            "$2b$10$7EqJtq98hPqEX7fNZaFWoO5f.Pg3rQAYyu3iJ/T9Y2aXx1Z9E6iGa";
 
     @Test
     void save_and_findById_roundtrip_rolesAndFields() {
-        User domain = new User(null, IdentityEmail.of("ituser@example.com"), PasswordHash.ofHashed(HASH), false, Set.of(Role.USER, Role.ADMIN), Instant.now());
+        // ⬇️ id NO nulo: lo genera el dominio
+        User domain = new User(
+                UserId.newId(),
+                IdentityEmail.of("ituser@example.com"),
+                PasswordHash.ofHashed(HASH),
+                false,
+                Set.of(Role.USER, Role.ADMIN),
+                Instant.now()
+        );
+
         User persisted = adapter.save(domain);
         assertNotNull(persisted.id());
+
         Optional<User> loaded = adapter.findById(persisted.id());
         assertTrue(loaded.isPresent());
+
         User u = loaded.get();
         assertEquals("ituser@example.com", u.email().getValue());
         assertEquals(HASH, u.passwordHash().getValue());
@@ -49,8 +60,17 @@ class UserPersistenceAdapterIT {
 
     @Test
     void findByEmail_roundtrip() {
-        User domain = new User(UUID.randomUUID(), IdentityEmail.of("itmail@example.com"), PasswordHash.ofHashed(HASH), true, Set.of(Role.USER), Instant.now());
+        User domain = new User(
+                UserId.newId(),
+                IdentityEmail.of("itmail@example.com"),
+                PasswordHash.ofHashed(HASH),
+                true,
+                Set.of(Role.USER),
+                Instant.now()
+        );
+
         adapter.save(domain);
+
         Optional<User> loaded = adapter.findByEmail(IdentityEmail.of("ITMAIL@example.com"));
         assertTrue(loaded.isPresent());
         assertEquals("itmail@example.com", loaded.get().email().getValue());

@@ -1,5 +1,8 @@
 package com.aredondocharro.ClothingStore.identity.domain.port.out;
 
+import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetTokenId;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
+
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,19 +13,19 @@ public interface PasswordResetTokenRepositoryPort {
 
     Optional<Token> findValidByHash(String tokenHash, Instant now);
 
-    void markUsed(UUID id, Instant usedAt);
+    void markUsed(PasswordResetTokenId id, Instant usedAt);
 
-    void deleteAllForUser(UUID userId);
+    void deleteAllForUser(UserId userId);
 
     final class Token {
-        private final UUID id;
-        private final UUID userId;
+        private final PasswordResetTokenId id;
+        private final UserId userId;
         private final String tokenHash;
         private final Instant expiresAt;
         private final Instant usedAt;
         private final Instant createdAt;
 
-        public Token(UUID id, UUID userId, String tokenHash, Instant expiresAt, Instant usedAt, Instant createdAt) {
+        public Token(PasswordResetTokenId id, UserId userId, String tokenHash, Instant expiresAt, Instant usedAt, Instant createdAt) {
             this.id = id;
             this.userId = userId;
             this.tokenHash = tokenHash;
@@ -31,8 +34,8 @@ public interface PasswordResetTokenRepositoryPort {
             this.createdAt = createdAt;
         }
 
-        public UUID id() { return id; }
-        public UUID userId() { return userId; }
+        public PasswordResetTokenId id() { return id; }
+        public UserId userId() { return userId; }
         public String tokenHash() { return tokenHash; }
         public Instant expiresAt() { return expiresAt; }
         public Instant usedAt() { return usedAt; }

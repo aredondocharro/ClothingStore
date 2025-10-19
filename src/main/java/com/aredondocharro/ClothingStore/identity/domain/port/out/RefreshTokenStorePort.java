@@ -1,10 +1,11 @@
 package com.aredondocharro.ClothingStore.identity.domain.port.out;
 
 import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
+
 
 public interface RefreshTokenStorePort {
 
@@ -17,5 +18,5 @@ public interface RefreshTokenStorePort {
 
     void revoke(String jti, String reason, Instant when);
 
-    void revokeAllForUser(UUID userId, String reason, Instant when);
+    void revokeAllForUser(UserId userId, String reason, Instant when);
 }

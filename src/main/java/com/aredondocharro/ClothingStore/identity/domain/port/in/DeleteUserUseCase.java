@@ -1,7 +1,8 @@
 package com.aredondocharro.ClothingStore.identity.domain.port.in;
 
-import java.util.UUID;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
+
 
 public interface DeleteUserUseCase {
-    void delete(UUID userId);
+    void delete(UserId userId);
 }
