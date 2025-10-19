@@ -81,13 +81,12 @@ Contexts are independent at the **domain** level. Integration happens via **port
 ### Diagrams
 
 #### High‑level BC interaction
-
 ```mermaid
 flowchart LR
-  U[User / Frontend] -->|HTTP| A[Auth Controller (Identity.in.web)]
+  U[User / Frontend] -->|HTTP| A[Auth Controller - Identity.in.web]
   A -->|calls| IApp[Identity Application]
-  IApp -->|out port: MailerPort| IOut[Identity Infrastructure OUT]
-  IOut -->|delegate| NIn[Notification Application (SendEmailUseCase)]
+  IApp -->|out port MailerPort| IOut[Identity Infrastructure OUT]
+  IOut -->|delegates to| NIn[Notification Application - SendEmailUseCase]
   NIn --> NTemp[Template Renderer]
   NTemp --> NSMTP[SMTP Sender]
 ```
