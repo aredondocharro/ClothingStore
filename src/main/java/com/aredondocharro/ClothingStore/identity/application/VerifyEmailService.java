@@ -25,7 +25,7 @@ public class VerifyEmailService implements VerifyEmailUseCase {
     private final SaveUserPort saveUserPort;
     private final TokenGeneratorPort tokens;
     private final RefreshTokenStorePort refreshStore;
-    private final TokenVerifierPort tokenVerifier;
+    private final RefreshTokenVerifierPort refreshVerifier;
     private final Clock clock;
 
     @Override
@@ -42,7 +42,7 @@ public class VerifyEmailService implements VerifyEmailUseCase {
         String accessToken  = tokens.generateAccessToken(user);
         String refreshToken = tokens.generateRefreshToken(user);
 
-        TokenVerifierPort.DecodedToken decoded = tokenVerifier.verify(refreshToken, "refresh");
+        var decoded = refreshVerifier.verify(refreshToken);
 
         // ⬇⬇ createdAt controlado por la app (no dependemos de iat)
         RefreshSession session = RefreshSession.issue(

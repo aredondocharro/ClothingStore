@@ -8,13 +8,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;                 // <-- nuevo
 import java.util.List;
 import java.util.UUID;
 
@@ -22,13 +22,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.MOCK,
-        properties = {
-                // Evita el fallo por placeholder si tu SecurityConfig lee este valor
-                "app.cors.allowed-origins=http://localhost"
-        }
-)
+@SpringBootTest
 @AutoConfigureMockMvc
 class AccessTokenFilterTest {
 
@@ -41,11 +35,7 @@ class AccessTokenFilterTest {
 
     @TestConfiguration
     static class TestBeans {
-        // Registramos el filtro real, cableado al mock 'verifier'
-        @Bean
-        AccessTokenFilter accessTokenFilter(AccessTokenVerifierPort verifier) {
-            return new AccessTokenFilter(verifier);
-        }
+        // ⚠️ NO registrar AccessTokenFilter aquí (ya lo crea SecurityConfig)
 
         // Endpoint de prueba que devuelve el id del principal
         @RestController
@@ -60,8 +50,11 @@ class AccessTokenFilterTest {
     @Test
     void returns_200_with_valid_bearer_and_sets_principal() throws Exception {
         String uid = UUID.randomUUID().toString();
+        Instant now = Instant.parse("2025-01-01T00:00:00Z");
+
+        // Usa el constructor del record (evita problemas con factory methods)
         when(verifier.verify("good"))
-                .thenReturn(AuthPrincipal.of(uid, List.of("ROLE_USER")));
+                .thenReturn(new AuthPrincipal(uid, List.of("ROLE_USER"), now, now.plusSeconds(600)));
 
         mvc.perform(get("/test/me")
                         .header("Authorization", "Bearer good")

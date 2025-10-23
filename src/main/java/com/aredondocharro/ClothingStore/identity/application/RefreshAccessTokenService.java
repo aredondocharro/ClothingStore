@@ -6,8 +6,8 @@ import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.RefreshAccessTokenUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.RefreshTokenStorePort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.RefreshTokenVerifierPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,14 +18,14 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class RefreshAccessTokenService implements RefreshAccessTokenUseCase {
 
-    private final TokenVerifierPort tokenVerifier;
+    private final RefreshTokenVerifierPort refreshVerifier;
     private final RefreshTokenStorePort store;
     private final LoadUserPort loadUserPort;
     private final TokenGeneratorPort tokens;
 
     @Override
     public AuthResult refresh(String refreshTokenRaw, String ip, String userAgent) {
-        TokenVerifierPort.DecodedToken decoded = tokenVerifier.verify(refreshTokenRaw, "refresh"); // firma, iss, type, exp
+        var decoded = refreshVerifier.verify(refreshTokenRaw);
         Instant now = Instant.now();
 
         Optional<RefreshSession> sessionOpt = store.findByJti(decoded.jti());
@@ -57,7 +57,7 @@ public class RefreshAccessTokenService implements RefreshAccessTokenUseCase {
         String newRefresh = tokens.generateRefreshToken(user);
 
         // Decodificar el nuevo refresh para extraer jti/exp
-        TokenVerifierPort.DecodedToken newDecoded = tokenVerifier.verify(newRefresh, "refresh");
+        var newDecoded = refreshVerifier.verify(newRefresh);
 
         // Guardar nueva sesión rotada y marcar la anterior como reemplazada
         RefreshSession newSession = new RefreshSession(

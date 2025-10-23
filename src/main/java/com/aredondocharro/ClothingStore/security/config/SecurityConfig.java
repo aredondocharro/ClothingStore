@@ -1,6 +1,7 @@
 package com.aredondocharro.ClothingStore.security.config;
 
 import com.aredondocharro.ClothingStore.security.filter.AccessTokenFilter;
+import com.aredondocharro.ClothingStore.security.port.AccessTokenVerifierPort;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -28,6 +29,10 @@ import java.util.stream.Collectors;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    @Bean
+    public AccessTokenFilter accessTokenFilter(AccessTokenVerifierPort verifier) {
+        return new AccessTokenFilter(verifier);
+    }
     @Bean
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,

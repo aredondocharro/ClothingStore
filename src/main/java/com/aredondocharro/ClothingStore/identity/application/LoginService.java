@@ -8,11 +8,7 @@ import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.LoginUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.RefreshTokenStorePort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.*;
 import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +24,7 @@ public class LoginService implements LoginUseCase {
     private final PasswordHasherPort hasher;
     private final TokenGeneratorPort tokens;
     private final RefreshTokenStorePort refreshStore;
-    private final TokenVerifierPort tokenVerifier;
+    private final RefreshTokenVerifierPort refreshVerifier;
     private final Clock clock;
 
     @Override
@@ -52,7 +48,7 @@ public class LoginService implements LoginUseCase {
         String refreshToken = tokens.generateRefreshToken(user);
 
         // Decodifica el refresh y persiste la sesión
-        TokenVerifierPort.DecodedToken decoded = tokenVerifier.verify(refreshToken, "refresh");
+        var decoded = refreshVerifier.verify(refreshToken);
 
         // Fallback seguro para createdAt (iat puede no venir)
 

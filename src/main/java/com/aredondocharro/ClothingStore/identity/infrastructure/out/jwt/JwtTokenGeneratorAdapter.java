@@ -32,7 +32,7 @@ public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
     public String generateAccessToken(User u) {
         Instant now = Instant.now();
 
-        // Mapea Set<Role> -> String[] (elige: "USER" o "ROLE_USER")
+        // Mapea Set<Role> -> String[]
         String[] roleNames = u.roles().stream()
                 .map(Role::name)                // o .map(r -> "ROLE_" + r.name())
                 .toArray(String[]::new);

@@ -1,76 +1,119 @@
 package com.aredondocharro.ClothingStore.security.infrastructure;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort.DecodedToken;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.error.TokenExpiredException;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.error.TokenInvalidException;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.error.TokenMissingClaimException;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.error.TokenUnsupportedTypeException;
 import com.aredondocharro.ClothingStore.security.infrastructure.out.jwt.JwtAccessTokenVerifierAdapter;
 import com.aredondocharro.ClothingStore.security.port.AccessTokenVerifierPort;
 import com.aredondocharro.ClothingStore.security.port.AuthPrincipal;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 class JwtAccessTokenVerifierAdapterTest {
 
-    TokenVerifierPort tokenVerifier = mock(TokenVerifierPort.class);
-    JwtAccessTokenVerifierAdapter adapter;
+    private static final String SECRET  = "test-secret-123";
+    private static final String ISSUER  = "AUTH0JWT-BACKEND";
+
+    private JwtAccessTokenVerifierAdapter adapter;
+    private Algorithm algo;
 
     @BeforeEach
     void setUp() {
-        adapter = new JwtAccessTokenVerifierAdapter(tokenVerifier);
+        adapter = new JwtAccessTokenVerifierAdapter(SECRET, ISSUER);
+        algo = Algorithm.HMAC256(SECRET);
     }
 
     @Test
-    void maps_success_to_AuthPrincipal() {
-        var uid = UUID.randomUUID();
-        var decoded = new DecodedToken(
-                UserId.of(uid),
-                "jti-123",
-                Instant.now(),
-                Instant.now().plusSeconds(3600),
-                List.of("ROLE_USER", "payments:charge")
-        );
-        when(tokenVerifier.verify("good", "access")).thenReturn(decoded);
+    void maps_success_to_AuthPrincipal_with_roles_array() {
+        UUID uid = UUID.randomUUID();
+        Instant now = Instant.now();
 
-        AuthPrincipal p = adapter.verify("good");
+        String token = JWT.create()
+                .withIssuer(ISSUER)
+                .withSubject(uid.toString())
+                .withIssuedAt(Date.from(now.minusSeconds(5)))
+                .withExpiresAt(Date.from(now.plusSeconds(600)))
+                .withClaim("type", "access")
+                .withArrayClaim("roles", new String[]{"USER", "ADMIN"})
+                .sign(algo);
+
+        AuthPrincipal p = adapter.verify(token);
 
         assertEquals(uid.toString(), p.userId());
-        assertEquals(List.of("ROLE_USER", "payments:charge"), p.authorities());
+        // El adaptador añade el prefijo ROLE_ a los roles del claim
+        assertTrue(p.authorities().containsAll(List.of("ROLE_USER", "ROLE_ADMIN")));
         assertNotNull(p.issuedAt());
         assertNotNull(p.expiresAt());
     }
 
     @Test
-    void maps_expired() {
-        when(tokenVerifier.verify("expired", "access")).thenThrow(new TokenExpiredException("x"));
-        assertThrows(AccessTokenVerifierPort.ExpiredTokenException.class, () -> adapter.verify("expired"));
+    void expired_token_throws_ExpiredTokenException() {
+        Instant now = Instant.now();
+
+        String token = JWT.create()
+                .withIssuer(ISSUER)
+                .withSubject(UUID.randomUUID().toString())
+                .withIssuedAt(Date.from(now.minusSeconds(120)))
+                .withExpiresAt(Date.from(now.minusSeconds(60))) // ya expirado
+                .withClaim("type", "access")
+                .withArrayClaim("roles", new String[]{"USER"})
+                .sign(algo);
+
+        assertThrows(AccessTokenVerifierPort.ExpiredTokenException.class, () -> adapter.verify(token));
     }
 
     @Test
-    void maps_unsupported_type() {
-        when(tokenVerifier.verify("wrongtype", "access")).thenThrow(new TokenUnsupportedTypeException("x"));
-        assertThrows(AccessTokenVerifierPort.UnsupportedTokenTypeException.class, () -> adapter.verify("wrongtype"));
+    void wrong_type_claim_throws_UnsupportedTokenTypeException() {
+        Instant now = Instant.now();
+
+        String token = JWT.create()
+                .withIssuer(ISSUER)
+                .withSubject(UUID.randomUUID().toString())
+                .withIssuedAt(Date.from(now))
+                .withExpiresAt(Date.from(now.plusSeconds(600)))
+                .withClaim("type", "refresh") // no es access
+                .withArrayClaim("roles", new String[]{"USER"})
+                .sign(algo);
+
+        assertThrows(AccessTokenVerifierPort.UnsupportedTokenTypeException.class, () -> adapter.verify(token));
     }
 
     @Test
-    void maps_missing_claim() {
-        when(tokenVerifier.verify("missing", "access")).thenThrow(new TokenMissingClaimException("x"));
-        assertThrows(AccessTokenVerifierPort.MissingRequiredClaimException.class, () -> adapter.verify("missing"));
+    void missing_sub_claim_throws_MissingRequiredClaimException() {
+        Instant now = Instant.now();
+
+        String token = JWT.create()
+                .withIssuer(ISSUER)
+                // sin subject
+                .withIssuedAt(Date.from(now))
+                .withExpiresAt(Date.from(now.plusSeconds(600)))
+                .withClaim("type", "access")
+                .withArrayClaim("roles", new String[]{"USER"})
+                .sign(algo);
+
+        assertThrows(AccessTokenVerifierPort.MissingRequiredClaimException.class, () -> adapter.verify(token));
     }
 
     @Test
-    void maps_invalid() {
-        when(tokenVerifier.verify("bad", "access")).thenThrow(new TokenInvalidException("x"));
-        assertThrows(AccessTokenVerifierPort.InvalidTokenException.class, () -> adapter.verify("bad"));
+    void invalid_signature_throws_InvalidTokenException() {
+        Instant now = Instant.now();
+        Algorithm other = Algorithm.HMAC256("other-secret"); // firma distinta
+
+        String token = JWT.create()
+                .withIssuer(ISSUER)
+                .withSubject(UUID.randomUUID().toString())
+                .withIssuedAt(Date.from(now))
+                .withExpiresAt(Date.from(now.plusSeconds(600)))
+                .withClaim("type", "access")
+                .withArrayClaim("roles", new String[]{"USER"})
+                .sign(other);
+
+        assertThrows(AccessTokenVerifierPort.InvalidTokenException.class, () -> adapter.verify(token));
     }
 }

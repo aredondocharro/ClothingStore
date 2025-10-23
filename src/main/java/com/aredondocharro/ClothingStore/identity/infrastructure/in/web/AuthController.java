@@ -3,7 +3,6 @@ package com.aredondocharro.ClothingStore.identity.infrastructure.in.web;
 import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail; // VO correcto
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.AuthResponse;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.LoginRequest;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.MessageResponse;

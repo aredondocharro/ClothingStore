@@ -4,8 +4,8 @@ import com.aredondocharro.ClothingStore.identity.application.*;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.*;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.crypto.BCryptPasswordHasherAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtRefreshTokenVerifierAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtTokenGeneratorAdapter;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtTokenVerifierAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.jwt.JwtVerificationAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.JpaRefreshTokenStoreAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserAdminRepositoryAdapter;
@@ -77,6 +77,13 @@ public class IdentityConfig {
     // Seguridad / JWT (Ports OUT)
     // ========================================================================
 
+    @Bean
+    public RefreshTokenVerifierPort refreshTokenVerifierPort(
+            @Value("${security.jwt.secret}") String secret,
+            @Value("${security.jwt.issuer}") String issuer
+    ) {
+        return new JwtRefreshTokenVerifierAdapter(secret, issuer);
+    }
 
     @Bean
     public VerificationTokenPort verificationTokenPort(
@@ -86,13 +93,6 @@ public class IdentityConfig {
         return new JwtVerificationAdapter(secret, issuer);
     }
 
-    @Bean
-    public TokenVerifierPort tokenVerifierPort(
-            @Value("${security.jwt.secret}") String secret,
-            @Value("${security.jwt.issuer}") String issuer
-    ) {
-        return new JwtTokenVerifierAdapter(secret, issuer);
-    }
 
     @Bean
     public TokenGeneratorPort tokenGenerator(
@@ -184,39 +184,41 @@ public class IdentityConfig {
                                      PasswordHasherPort hasher,
                                      TokenGeneratorPort tokens,
                                      RefreshTokenStorePort store,
-                                     TokenVerifierPort verifier,
+                                     RefreshTokenVerifierPort refreshVerifier,
                                      Clock clock) {
-        return new LoginService(loadUserPort, hasher, tokens, store, verifier, clock);
+        return new LoginService(loadUserPort, hasher, tokens, store, refreshVerifier, clock);
     }
 
-    @Bean
-    public VerifyEmailUseCase verifyEmailUseCase(VerificationTokenPort verifierToken,
-                                                 LoadUserPort loadUserPort,
-                                                 SaveUserPort saveUserPort,
-                                                 TokenGeneratorPort tokens,
-                                                 RefreshTokenStorePort store,
-                                                 TokenVerifierPort verifier,
-                                                 Clock clock) {
-        return new VerifyEmailService(verifierToken, loadUserPort, saveUserPort, tokens, store, verifier, clock);
-    }
+        @Bean
+        public VerifyEmailUseCase verifyEmailUseCase(VerificationTokenPort verifierToken,
+                LoadUserPort loadUserPort,
+                SaveUserPort saveUserPort,
+                TokenGeneratorPort tokens,
+                RefreshTokenStorePort store,
+                RefreshTokenVerifierPort refreshVerifier,
+                Clock clock) {
+            return new VerifyEmailService(verifierToken, loadUserPort, saveUserPort, tokens, store, refreshVerifier, clock);
+        }
+
 
 
     @Bean
     public RefreshAccessTokenUseCase refreshAccessTokenUseCase(
-            TokenVerifierPort tokenVerifier,
+            RefreshTokenVerifierPort refreshVerifier,
             RefreshTokenStorePort store,
             LoadUserPort loadUserPort,
             TokenGeneratorPort tokens
     ) {
-        return new RefreshAccessTokenService(tokenVerifier, store, loadUserPort, tokens);
+        return new RefreshAccessTokenService(refreshVerifier, store, loadUserPort, tokens);
     }
+
 
     @Bean
     public LogoutUseCase logoutUseCase(
-            TokenVerifierPort tokenVerifier,
+            RefreshTokenVerifierPort refreshVerifier,
             RefreshTokenStorePort store
     ) {
-        return new LogoutService(tokenVerifier, store);
+        return new LogoutService(refreshVerifier, store);
     }
 
     //Added for admin user deletion

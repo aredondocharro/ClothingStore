@@ -9,8 +9,8 @@ import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.RefreshTokenStorePort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.RefreshTokenVerifierPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorPort;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,8 +19,8 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Clock;
 import java.time.Instant;
-import java.util.List;              // ⬅️ nuevo
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,23 +31,20 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class LoginServiceTest {
 
-    @Mock
-    LoadUserPort loadUserPort;
-    @Mock
-    PasswordHasherPort hasher;
-    @Mock
-    TokenGeneratorPort tokens;
-    @Mock
-    RefreshTokenStorePort refreshStore;
-    @Mock
-    TokenVerifierPort tokenVerifier;
-    @Mock
-    java.time.Clock clock;
+    @Mock LoadUserPort loadUserPort;
+    @Mock PasswordHasherPort hasher;
+    @Mock TokenGeneratorPort tokens;
+    @Mock RefreshTokenStorePort refreshStore;
+    @Mock RefreshTokenVerifierPort refreshVerifier;
+    @Mock Clock clock;
+
     LoginService service;
 
     @BeforeEach
     void setUp() {
-        service = new LoginService(loadUserPort, hasher, tokens, refreshStore, tokenVerifier, clock);
+        // Nuevo orden de dependencias del constructor:
+        // (loadUserPort, hasher, tokens, refreshStore, refreshVerifier, clock)
+        service = new LoginService(loadUserPort, hasher, tokens, refreshStore, refreshVerifier, clock);
     }
 
     @Test
@@ -60,7 +57,7 @@ class LoginServiceTest {
                 () -> assertThrows(PasswordRequiredException.class, () -> service.login(email, "   "))
         );
 
-        verifyNoInteractions(loadUserPort, hasher, tokens, tokenVerifier, refreshStore);
+        verifyNoInteractions(loadUserPort, hasher, tokens, refreshVerifier, refreshStore);
     }
 
     @Test
@@ -72,7 +69,7 @@ class LoginServiceTest {
 
         verify(loadUserPort).findByEmail(email);
         verifyNoMoreInteractions(loadUserPort);
-        verifyNoInteractions(hasher, tokens, tokenVerifier, refreshStore);
+        verifyNoInteractions(hasher, tokens, refreshVerifier, refreshStore);
     }
 
     @Test
@@ -93,7 +90,7 @@ class LoginServiceTest {
         inOrder.verify(loadUserPort).findByEmail(email);
         inOrder.verify(hasher).matches("WrongPass", ph.getValue());
 
-        verifyNoInteractions(tokens, tokenVerifier, refreshStore);
+        verifyNoInteractions(tokens, refreshVerifier, refreshStore);
     }
 
     @Test
@@ -115,7 +112,7 @@ class LoginServiceTest {
         inOrder.verify(loadUserPort).findByEmail(email);
         inOrder.verify(hasher).matches("Secret123!", ph.getValue());
 
-        verifyNoInteractions(tokens, tokenVerifier, refreshStore);
+        verifyNoInteractions(tokens, refreshVerifier, refreshStore);
     }
 
     @Test
@@ -137,20 +134,16 @@ class LoginServiceTest {
         when(tokens.generateAccessToken(user)).thenReturn("access.jwt.token");
         when(tokens.generateRefreshToken(user)).thenReturn("refresh.jwt.token");
 
-        // ⬇️ Fijamos el Clock que usa el servicio
+        // Fijamos el Clock que usa el servicio
         Instant fixedNow = Instant.parse("2025-01-01T00:00:00Z");
         when(clock.instant()).thenReturn(fixedNow);
 
-        // exp > createdAt para respetar el invariante de RefreshSession
+        // Decodificación del nuevo refresh emitido (extrae jti/exp)
         Instant exp = fixedNow.plusSeconds(3600);
-        var decoded = new TokenVerifierPort.DecodedToken(
-                UserId.of(rawUserId),
-                "jti-123",
-                null,          // iat puede faltar; el servicio usa now(clock)
-                exp,
-                List.of()      // ⬅️ nuevo: authorities (vacío por ahora)
+        var decoded = new RefreshTokenVerifierPort.DecodedRefresh(
+                UserId.of(rawUserId), "jti-123", fixedNow, exp
         );
-        when(tokenVerifier.verify("refresh.jwt.token", "refresh")).thenReturn(decoded);
+        when(refreshVerifier.verify("refresh.jwt.token")).thenReturn(decoded);
 
         AuthResult result = service.login(email, "Secret123!");
 
@@ -159,12 +152,12 @@ class LoginServiceTest {
         assertEquals("refresh.jwt.token", result.refreshToken());
 
         ArgumentCaptor<RefreshSession> cap = ArgumentCaptor.forClass(RefreshSession.class);
-        InOrder inOrder = inOrder(loadUserPort, hasher, tokens, tokenVerifier, refreshStore);
+        InOrder inOrder = inOrder(loadUserPort, hasher, tokens, refreshVerifier, refreshStore);
         inOrder.verify(loadUserPort).findByEmail(email);
         inOrder.verify(hasher).matches("Secret123!", ph.getValue());
         inOrder.verify(tokens).generateAccessToken(user);
         inOrder.verify(tokens).generateRefreshToken(user);
-        inOrder.verify(tokenVerifier).verify("refresh.jwt.token", "refresh");
+        inOrder.verify(refreshVerifier).verify("refresh.jwt.token");
         inOrder.verify(refreshStore).saveNew(cap.capture(), eq("refresh.jwt.token"));
         inOrder.verifyNoMoreInteractions();
 
@@ -172,7 +165,7 @@ class LoginServiceTest {
         assertEquals("jti-123", saved.jti());
         assertEquals(UserId.of(rawUserId), saved.userId());
         assertEquals(exp, saved.expiresAt());
-        assertEquals(fixedNow, saved.createdAt());   // ✅ ahora no es null
+        assertEquals(fixedNow, saved.createdAt());
         assertNull(saved.revokedAt());
         assertNull(saved.replacedByJti());
     }
