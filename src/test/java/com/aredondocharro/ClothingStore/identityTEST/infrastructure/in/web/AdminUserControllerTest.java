@@ -9,6 +9,7 @@ import com.aredondocharro.ClothingStore.identity.domain.port.in.DeleteUserUseCas
 import com.aredondocharro.ClothingStore.identity.domain.port.in.UpdateUserRolesUseCase;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.AdminUserController;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.error.IdentityGlobalErrorHandler;
+import com.aredondocharro.ClothingStore.security.config.SecurityConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;

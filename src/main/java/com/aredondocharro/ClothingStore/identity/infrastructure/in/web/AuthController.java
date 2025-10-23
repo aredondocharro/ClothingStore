@@ -1,12 +1,14 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.in.web;
 
 import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail; // VO correcto
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.AuthResponse;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.LoginRequest;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.MessageResponse;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.RegisterRequest;
+import com.aredondocharro.ClothingStore.security.port.AuthPrincipal;
 import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -21,8 +23,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
 
 
 @Slf4j
@@ -37,7 +41,7 @@ public class AuthController {
     private final VerifyEmailUseCase verifyUC;
     private final DeleteUserUseCase deleteUserUC;
     private final RefreshCookieManager cookieManager; // Gestor de cookie HttpOnly para refresh
-    private final TokenVerifierPort tokenVerifier;
+
 
 
     @Operation(
@@ -115,19 +119,10 @@ public class AuthController {
     @DeleteMapping("/delete")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MessageResponse> deleteAccount(
-            @RequestHeader("Authorization") String authHeader) {
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).build();
-        }
-        String accessToken = authHeader.substring(7);
-
-        // Verifica tu token ACCESS y obtén el userId del 'sub'
-        var decoded = tokenVerifier.verify(accessToken, "access");
-
-        // Borra al propietario del token (no aceptamos IDs externos)
-        deleteUserUC.delete(decoded.userId());
-
+            @AuthenticationPrincipal AuthPrincipal auth )
+    {
+        UserId userId = UserId.of(UUID.fromString(auth.userId()));
+        deleteUserUC.delete(userId);
         return ResponseEntity.ok(new MessageResponse("Account deleted successfully"));
     }
 

@@ -7,6 +7,7 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPo
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -16,19 +17,26 @@ class LogoutServiceTest {
 
     @Test
     void logout_revokes_session() {
-        var verifier = mock(TokenVerifierPort.class);
-        var store    = mock(RefreshTokenStorePort.class);
+        TokenVerifierPort verifier = mock(TokenVerifierPort.class);
+        RefreshTokenStorePort store = mock(RefreshTokenStorePort.class);
 
         UserId userId = UserId.of(UUID.randomUUID());
-        Instant now   = Instant.parse("2025-01-01T00:00:00Z");
-        Instant exp   = now.plusSeconds(3600);
+        Instant now = Instant.parse("2025-01-01T00:00:00Z");
+        Instant exp = now.plusSeconds(3600);
 
         when(verifier.verify(eq("R1"), eq("refresh")))
-                .thenReturn(new TokenVerifierPort.DecodedToken(userId, "JTI1", now, exp));
+                .thenReturn(new TokenVerifierPort.DecodedToken(
+                        userId, "JTI1", now, exp, List.of()
+                ));
 
-        var service = new LogoutService(verifier, store);
+        LogoutService service = new LogoutService(verifier, store);
+
+        // act
         service.logout("R1", "1.2.3.4");
 
-        verify(store).revoke(eq("JTI1"), eq("logout"), any(Instant.class));
+        // assert
+        verify(verifier).verify(eq("R1"), eq("refresh"));                 // Verificamos la interacción con el verifier
+        verify(store).revoke(eq("JTI1"), eq("logout"), any(Instant.class)); // Ajusta "logout" si tu implementación pasa otro motivo/IP
+        verifyNoMoreInteractions(verifier, store);
     }
 }

@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;              // ⬅️ nuevo
 import java.util.Optional;
 import java.util.UUID;
 
@@ -145,8 +146,9 @@ class LoginServiceTest {
         var decoded = new TokenVerifierPort.DecodedToken(
                 UserId.of(rawUserId),
                 "jti-123",
-                null,     // iat puede faltar; el servicio usa now(clock)
-                exp
+                null,          // iat puede faltar; el servicio usa now(clock)
+                exp,
+                List.of()      // ⬅️ nuevo: authorities (vacío por ahora)
         );
         when(tokenVerifier.verify("refresh.jwt.token", "refresh")).thenReturn(decoded);
 

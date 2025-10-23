@@ -5,8 +5,7 @@ import com.aredondocharro.ClothingStore.identity.application.RequestPasswordRese
 import com.aredondocharro.ClothingStore.identity.application.ResetPasswordService;
 import com.aredondocharro.ClothingStore.identity.contracts.event.PasswordResetEmailRequested;
 import com.aredondocharro.ClothingStore.identity.domain.exception.NewPasswordSameAsOldException;
-import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordRequiredException;
-import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordResetTokenInvalidException;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.error.PasswordResetTokenInvalidException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.InvalidPasswordException; // ⬅️ NUEVO
 import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
@@ -31,7 +30,6 @@ import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;

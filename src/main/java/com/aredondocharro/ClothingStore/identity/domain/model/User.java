@@ -1,7 +1,7 @@
 package com.aredondocharro.ClothingStore.identity.domain.model;
 
 import com.aredondocharro.ClothingStore.identity.domain.exception.EmailRequiredException;
-import com.aredondocharro.ClothingStore.identity.domain.exception.HashedPasswordRequiredException;
+import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordNotBCryptedException;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -17,7 +17,7 @@ public record User(
 ) {
     public User {
         if (email == null) throw new EmailRequiredException();
-        if (passwordHash == null) throw new HashedPasswordRequiredException();
+        if (passwordHash == null) throw new PasswordNotBCryptedException();
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(createdAt, "createdAt");
 

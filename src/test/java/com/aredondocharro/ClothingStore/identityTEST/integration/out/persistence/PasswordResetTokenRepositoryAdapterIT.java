@@ -1,6 +1,6 @@
 package com.aredondocharro.ClothingStore.identityTEST.integration.out.persistence;
 
-import com.aredondocharro.ClothingStore.TestcontainersConfiguration;
+import com.aredondocharro.ClothingStore.testconfig.TestcontainersConfiguration;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetTokenId;
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;

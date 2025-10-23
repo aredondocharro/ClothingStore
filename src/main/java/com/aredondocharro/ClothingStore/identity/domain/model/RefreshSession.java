@@ -1,6 +1,6 @@
 package com.aredondocharro.ClothingStore.identity.domain.model;
 
-import com.aredondocharro.ClothingStore.identity.domain.exception.RefreshSessionInvalidException;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.error.RefreshSessionInvalidException;
 
 import java.time.Instant;
 import java.util.Objects;

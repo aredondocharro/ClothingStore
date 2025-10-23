@@ -11,8 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -33,7 +31,7 @@ public class PublishVerificationEmailOnUserRegisteredService {
     @Value("${app.verify.baseUrl}")
     private String verifyBaseUrl;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+
     public void on(UserRegistered e) {
         // Si tu TokenGeneratorPort necesita el agregado completo:
         User user = loadUsers.findById(e.userId()).orElseThrow();

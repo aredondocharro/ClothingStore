@@ -1,6 +1,6 @@
 package com.aredondocharro.ClothingStore.identity.application;
 
-import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordResetTokenInvalidException;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.error.PasswordResetTokenInvalidException;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.ResetPasswordUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;

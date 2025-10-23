@@ -1,7 +1,7 @@
 // src/main/java/.../VerifyEmailService.java
 package com.aredondocharro.ClothingStore.identity.application;
 
-import com.aredondocharro.ClothingStore.identity.domain.exception.VerificationTokenInvalidException;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.error.VerificationTokenInvalidException;
 import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;

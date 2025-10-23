@@ -1,7 +1,7 @@
 package com.aredondocharro.ClothingStore.identityTEST.application;
 
 import com.aredondocharro.ClothingStore.identity.application.VerifyEmailService;
-import com.aredondocharro.ClothingStore.identity.domain.exception.VerificationTokenInvalidException;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.error.VerificationTokenInvalidException;
 import com.aredondocharro.ClothingStore.identity.domain.model.*;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;

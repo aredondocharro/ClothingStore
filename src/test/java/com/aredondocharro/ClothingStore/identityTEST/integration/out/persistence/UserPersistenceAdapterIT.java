@@ -1,6 +1,6 @@
 package com.aredondocharro.ClothingStore.identityTEST.integration.out.persistence;
 
-import com.aredondocharro.ClothingStore.TestcontainersConfiguration;
+import com.aredondocharro.ClothingStore.testconfig.TestcontainersConfiguration;
 import com.aredondocharro.ClothingStore.identity.domain.model.*;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserPersistenceAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;

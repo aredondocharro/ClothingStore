@@ -1,6 +1,6 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.in.web;
 
-import com.aredondocharro.ClothingStore.identity.domain.exception.MissingRefreshCookieException;
+import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.error.MissingRefreshCookieException;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.LogoutUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.RefreshAccessTokenUseCase;

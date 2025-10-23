@@ -1,5 +1,6 @@
 package com.aredondocharro.ClothingStore;
 
+import com.aredondocharro.ClothingStore.testconfig.TestcontainersConfiguration;
 import org.springframework.boot.SpringApplication;
 
 public class TestClothingStoreApplication {

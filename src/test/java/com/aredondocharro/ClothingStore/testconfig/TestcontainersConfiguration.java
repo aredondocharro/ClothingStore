@@ -1,4 +1,4 @@
-package com.aredondocharro.ClothingStore;
+package com.aredondocharro.ClothingStore.testconfig;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;

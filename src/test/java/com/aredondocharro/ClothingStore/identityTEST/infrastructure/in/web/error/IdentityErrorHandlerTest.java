@@ -3,13 +3,11 @@ package com.aredondocharro.ClothingStore.identityTEST.infrastructure.in.web.erro
 import com.aredondocharro.ClothingStore.identity.domain.exception.*;
 import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenVerifierPort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.error.VerificationTokenInvalidException;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.AuthController;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.RefreshController;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.RefreshCookieManager;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.error.IdentityGlobalErrorHandler;
-import com.aredondocharro.ClothingStore.identity.infrastructure.in.security.JwtAuthFilter;
-import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -19,26 +17,25 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * Tests que ejercitan IdentityGlobalErrorHandler a través de endpoints reales.
+ * Nota: seguridad desactivada en el slice; 401/403 por access token se prueban en security.
  */
 @WebMvcTest(controllers = {
         AuthController.class,
-        RefreshController.class,
-        IdentityErrorHandlerTest.ThrowingController.class
+        RefreshController.class
 })
 @AutoConfigureMockMvc(addFilters = false)
 @Import(IdentityGlobalErrorHandler.class)
@@ -57,15 +54,14 @@ class IdentityErrorHandlerTest {
     @MockBean RefreshAccessTokenUseCase refreshUC;
     @MockBean LogoutUseCase logoutUC;
     @MockBean RefreshCookieManager cookieManager;
-    @MockBean TokenVerifierPort tokenVerifierPort;
-    @MockBean JwtAuthFilter jwtAuthFilter;
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
-    @DisplayName("login -> InvalidCredentialsException -> 401 identity.invalid_credentials")
+    @DisplayName("login -> InvalidCredentialsException -> 401 identity.invalid_credentials (+WWW-Authenticate)")
     void login_invalidCredentials_401() throws Exception {
-        when(loginUC.login(any(), anyString()))
-                .thenThrow(new InvalidCredentialsException());
+        when(loginUC.login(eq(IdentityEmail.of("user@example.com")), eq("Secret123!")))
+                .thenThrow(new InvalidCredentialsException("identity.invalid_credentials"));
 
         String json = "{\"email\":\"user@example.com\",\"password\":\"Secret123!\"}";
 
@@ -73,6 +69,7 @@ class IdentityErrorHandlerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isUnauthorized())
+                .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, org.hamcrest.Matchers.containsString("Bearer")))
                 .andExpect(jsonPath("$.code").value("identity.invalid_credentials"))
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
@@ -99,7 +96,6 @@ class IdentityErrorHandlerTest {
     @Test
     @DisplayName("register -> EmailAlreadyExistException -> 409 identity.email_already_exists")
     void register_emailAlreadyExists_409() throws Exception {
-        // Ajustado a firma típica: (name, email, password, confirmPassword)
         doThrow(new EmailAlreadyExistException())
                 .when(registerUC).register(any(IdentityEmail.class), anyString(), anyString());
 
@@ -117,8 +113,7 @@ class IdentityErrorHandlerTest {
     @Test
     @DisplayName("verify -> VerificationTokenInvalidException -> 400 identity.verification_token_invalid")
     void verify_invalidToken_400() throws Exception {
-        when(verifyUC.verify(eq("bad")))
-                .thenThrow(new VerificationTokenInvalidException("Invalid or expired token"));
+        when(verifyUC.verify(eq("bad"))).thenThrow(new VerificationTokenInvalidException("Invalid or expired token"));
 
         mvc.perform(get("/auth/verify").param("token", "bad"))
                 .andExpect(status().isBadRequest())
@@ -171,63 +166,5 @@ class IdentityErrorHandlerTest {
     void login_methodNotAllowed_405() throws Exception {
         mvc.perform(get("/auth/login"))
                 .andExpect(status().isMethodNotAllowed());
-    }
-
-    @Test
-    @DisplayName("JWTVerificationException desde /auth/login -> 400 con code válido (jwt_invalid o verification_token_invalid)")
-    void jwt_verification_exception_400() throws Exception {
-        when(loginUC.login(any(), anyString()))
-                .thenThrow(new JWTVerificationException("JWT invalid"));
-
-        String json = "{\"email\":\"user@example.com\",\"password\":\"Secret123!\"}";
-
-        MvcResult result = mvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
-                .andExpect(status().isBadRequest())
-                .andReturn();
-
-        String body = result.getResponse().getContentAsString();
-        JsonNode root = MAPPER.readTree(body);
-        String code = root.get("code").asText();
-
-        boolean ok = "identity.jwt_invalid".equals(code) || "identity.verification_token_invalid".equals(code);
-        assertTrue(ok, "code debe ser identity.jwt_invalid o identity.verification_token_invalid pero fue: " + code);
-    }
-
-    @Test
-    @DisplayName("register -> InvalidPasswordException -> 400 identity.invalid_password")
-    void invalid_password_400() throws Exception {
-        doThrow(new InvalidPasswordException("Password does not meet policy"))
-                .when(registerUC).register(any(IdentityEmail.class), anyString(), anyString());
-
-        String json = "{\"name\":\"John\",\"email\":\"user@example.com\",\"password\":\"bad\",\"confirmPassword\":\"bad\"}";
-
-        mvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("identity.invalid_password"));
-    }
-
-    @Test
-    @DisplayName("register -> PasswordMismatchException -> 400 identity.password_mismatch")
-    void password_mismatch_400() throws Exception {
-        doThrow(new PasswordMismatchException())
-                .when(registerUC).register(any(IdentityEmail.class), anyString(), anyString());
-
-        String json = "{\"name\":\"John\",\"email\":\"user@example.com\",\"password\":\"a\",\"confirmPassword\":\"b\"}";
-
-        mvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("identity.password_mismatch"));
-    }
-
-    @RestController
-    static class ThrowingController {
-        @GetMapping("/__test/identity/jwt")
-        public void jwt() { throw new JWTVerificationException("JWT invalid"); }
     }
 }

@@ -19,7 +19,6 @@ public class SendEmailOnVerificationRequested {
 
     private final SendEmailUseCase sendEmail;
 
-@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void on(VerificationEmailRequested e) {
         sendEmail.send(
                 null,

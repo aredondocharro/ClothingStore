@@ -1,6 +1,5 @@
 package com.aredondocharro.ClothingStore.identity.domain.model;
 
-import com.aredondocharro.ClothingStore.identity.domain.exception.HashedPasswordRequiredException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.PasswordNotBCryptedException;
 
 import java.util.Objects;
@@ -18,7 +17,7 @@ public final class PasswordHash {
 
     public static PasswordHash ofHashed(String hashed) {
         if (hashed == null || hashed.isBlank()) {
-            throw new HashedPasswordRequiredException();
+            throw new PasswordNotBCryptedException();
         }
         if (!BCRYPT.matcher(hashed).matches()) {
             throw new PasswordNotBCryptedException();

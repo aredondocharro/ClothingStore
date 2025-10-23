@@ -37,11 +37,14 @@ public class LoginService implements LoginUseCase {
 
         log.debug("Login attempt email={}", email.getValue());
 
-        User user = loadUserPort.findByEmail(email).orElseThrow(InvalidCredentialsException::new);
+        User user = loadUserPort.findByEmail(email).orElseThrow(() -> {
+            log.warn("Login failed email (User not found)={}", LogSanitizer.maskEmail(email.getValue()));
+            return new InvalidCredentialsException("Wrong email or email not found");
+        });
 
         if (!hasher.matches(rawPassword, user.passwordHash().getValue())) {
             log.warn("Login failed email (Bad password) ={}", LogSanitizer.maskEmail(email.getValue()));
-            throw new InvalidCredentialsException();
+            throw new InvalidCredentialsException("Wrong password");
         }
         if (!user.emailVerified()) throw new EmailNotVerifiedException();
 
