@@ -1,11 +1,10 @@
 package com.aredondocharro.ClothingStore.identity.contracts.event;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
-import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.shared.domain.event.DomainEvent;
 
 import java.time.Instant;
+import java.util.UUID;
 
-public record UserRegistered(UserId userId, IdentityEmail email, Instant occurredAt) implements DomainEvent {
+public record UserRegistered(UUID userId, String email, Instant occurredAt) implements DomainEvent {
     @Override public String type() { return "identity.user.registered"; }
 }

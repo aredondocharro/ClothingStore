@@ -3,6 +3,7 @@ package com.aredondocharro.ClothingStore.identity.application;
 import com.aredondocharro.ClothingStore.identity.contracts.event.UserRegistered;
 import com.aredondocharro.ClothingStore.identity.contracts.event.VerificationEmailRequested;
 import com.aredondocharro.ClothingStore.identity.domain.model.User;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.LoadUserPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorPort;
 import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
@@ -34,13 +35,13 @@ public class PublishVerificationEmailOnUserRegisteredService {
 
     public void on(UserRegistered e) {
         // Si tu TokenGeneratorPort necesita el agregado completo:
-        User user = loadUsers.findById(e.userId()).orElseThrow();
+        User user = loadUsers.findById(UserId.of(e.userId())).orElseThrow();
 
         String token = tokens.generateVerificationToken(user);
         String url   = verifyBaseUrl + "?token=" +
                     URLEncoder.encode(token, StandardCharsets.UTF_8);
 
         eventBus.publish(new VerificationEmailRequested(e.email(), url, Instant.now(clock)));
-        log.info("Published VerificationEmailRequested for userId={} email={}", e.userId(), LogSanitizer.maskEmail(e.email().getValue()));
+        log.info("Published VerificationEmailRequested for userId={} email={}", e.userId(), LogSanitizer.maskEmail(e.email()));
     }
 }

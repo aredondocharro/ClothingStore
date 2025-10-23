@@ -1,10 +1,9 @@
 package com.aredondocharro.ClothingStore.identity.contracts.event;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.shared.domain.event.DomainEvent;
 
 import java.time.Instant;
 
-public record VerificationEmailRequested(IdentityEmail email, String url, Instant occurredAt) implements DomainEvent {
+public record VerificationEmailRequested(String email, String url, Instant occurredAt) implements DomainEvent {
     @Override public String type() { return "identity.verification_email.requested"; }
 }

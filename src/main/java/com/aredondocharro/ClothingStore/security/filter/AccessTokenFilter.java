@@ -15,6 +15,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -44,7 +45,7 @@ public class AccessTokenFilter extends OncePerRequestFilter {
                     AuthPrincipal principal = verifier.verify(raw);
 
                     // Construimos las autoridades de Spring
-                    java.util.List<SimpleGrantedAuthority> authorities =
+                    List<SimpleGrantedAuthority> authorities =
                             principal.authorities().stream()
                                     .filter(Objects::nonNull)
                                     .map(SimpleGrantedAuthority::new)

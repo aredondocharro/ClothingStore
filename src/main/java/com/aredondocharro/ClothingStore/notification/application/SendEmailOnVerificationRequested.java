@@ -22,7 +22,7 @@ public class SendEmailOnVerificationRequested {
     public void on(VerificationEmailRequested e) {
         sendEmail.send(
                 null,
-                List.of(e.email().getValue()),
+                List.of(e.email()),
                 "verify-email",
                 Map.of("verificationUrl", e.url()),
                 Locale.getDefault()
