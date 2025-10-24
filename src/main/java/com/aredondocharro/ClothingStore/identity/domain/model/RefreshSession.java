@@ -43,6 +43,11 @@ public record RefreshSession(
         return !isRevoked() && !isExpired(now);
     }
 
+    /** True si esta sesión ya fue rotada (tiene un new JTI) */
+    public boolean isReplaced() {
+        return replacedByJti != null && !replacedByJti.isBlank();
+    }
+
     /** Devuelve una copia marcada como revocada (idempotente). */
     public RefreshSession revoke(Instant when) {
         Objects.requireNonNull(when, "when");

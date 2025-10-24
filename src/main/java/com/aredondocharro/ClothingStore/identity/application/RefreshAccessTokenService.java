@@ -36,8 +36,8 @@ public class RefreshAccessTokenService implements RefreshAccessTokenUseCase {
 
         RefreshSession session = sessionOpt.get();
 
-        if (session.isRevoked() || session.isActive(now)) {
-            // Detección de reuso
+// ✅ reuse: ya estaba revocada o ya fue reemplazada (rotada)
+        if (session.isRevoked() || session.isReplaced()) {
             log.warn("Refresh reuse detected for userId={} jti={}", session.userId(), session.jti());
             store.revokeAllForUser(session.userId(), "reuse-detected", now);
             throw new SecurityException("Refresh token reuse detected");
