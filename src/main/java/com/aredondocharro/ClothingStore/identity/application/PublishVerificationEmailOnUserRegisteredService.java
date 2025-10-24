@@ -10,17 +10,13 @@ import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
 import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 
-
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class PublishVerificationEmailOnUserRegisteredService {
 
@@ -28,20 +24,22 @@ public class PublishVerificationEmailOnUserRegisteredService {
     private final LoadUserPort loadUsers;
     private final EventBusPort eventBus;
     private final Clock clock;
-
-    @Value("${app.verify.baseUrl}")
-    private String verifyBaseUrl;
-
+    private final String verifyBaseUrl;
 
     public void on(UserRegistered e) {
-        // Si tu TokenGeneratorPort necesita el agregado completo:
-        User user = loadUsers.findById(UserId.of(e.userId())).orElseThrow();
+        log.debug("Handling UserRegistered event (userId={})", e.userId());
+        User user = loadUsers.findById(UserId.of(e.userId()))
+                .orElseThrow(() -> {
+                    log.warn("User not found while handling UserRegistered (userId={})", e.userId());
+                    return new IllegalStateException("User not found: " + e.userId());
+                });
 
         String token = tokens.generateVerificationToken(user);
-        String url   = verifyBaseUrl + "?token=" +
-                    URLEncoder.encode(token, StandardCharsets.UTF_8);
+        String url = verifyBaseUrl + "?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
 
         eventBus.publish(new VerificationEmailRequested(e.email(), url, Instant.now(clock)));
-        log.info("Published VerificationEmailRequested for userId={} email={}", e.userId(), LogSanitizer.maskEmail(e.email()));
+        log.info("Published VerificationEmailRequested (userId={}, email={})",
+                e.userId(), LogSanitizer.maskEmail(e.email()));
+        // Do NOT log token or URL
     }
 }

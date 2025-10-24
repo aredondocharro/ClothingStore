@@ -7,13 +7,15 @@ import com.aredondocharro.ClothingStore.notification.domain.port.out.EmailSender
 import com.aredondocharro.ClothingStore.notification.domain.port.out.TemplateRendererPort;
 import com.aredondocharro.ClothingStore.notification.domain.exception.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
+
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Service
+
 @RequiredArgsConstructor
+@Slf4j
 public class SendEmailService implements SendEmailUseCase {
 
     private final TemplateRendererPort renderer;
@@ -26,11 +28,17 @@ public class SendEmailService implements SendEmailUseCase {
                      Map<String, Object> model,
                      Locale locale) {
 
-        // 1) Reglas mínimas
+        // 1) Minimal rules
         if (templateId == null || templateId.isBlank()) throw new TemplateIdRequiredException();
         if (to == null) throw new RecipientsRequiredException();
 
-        // 2) Normaliza y deduplica destinatarios (conservando orden)
+        boolean fromProvided = fromOrNull != null && !fromOrNull.isBlank();
+        int originalCount = to.size();
+        Locale loc = (locale != null) ? locale : Locale.getDefault();
+        log.debug("SendEmail invoked (templateId={}, locale={}, recipientsBefore={}, fromProvided={})",
+                templateId, loc, originalCount, fromProvided);
+
+        // 2) Normalize & deduplicate recipients (keep order)
         LinkedHashSet<String> cleaned = to.stream()
                 .filter(Objects::nonNull)
                 .map(String::trim)
@@ -38,24 +46,33 @@ public class SendEmailService implements SendEmailUseCase {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         if (cleaned.isEmpty()) throw new RecipientsRequiredException();
 
-        EmailAddress from = (fromOrNull == null || fromOrNull.isBlank()) ? null : new EmailAddress(fromOrNull);
+        int afterCount = cleaned.size();
+        int removed = Math.max(0, originalCount - afterCount);
+        log.debug("Recipients normalized and de-duplicated (after={}, removed={})", afterCount, removed);
+
+        EmailAddress from = fromProvided ? new EmailAddress(fromOrNull) : null;
         List<EmailAddress> recipients = cleaned.stream().map(EmailAddress::new).toList();
 
-        Locale loc = (locale != null) ? locale : Locale.getDefault();
         Map<String,Object> safeModel = (model != null) ? model : Map.of();
 
-        // Renderizado (si el puerto lanza TemplateNotFound/RenderException, dejar pasar)
+        // Render
+        log.debug("Rendering template (templateId={}, locale={})", templateId, loc);
         TemplateRendererPort.RenderedEmail rendered = renderer.render(templateId, safeModel, loc);
+        log.info("Template rendered successfully (templateId={}, locale={})", templateId, loc);
 
         EmailMessage emailMessage = new EmailMessage(from, recipients, rendered.subject(), rendered.bodyHtml(), true);
 
-        // 3) Mapea errores del provider a excepción de dominio
+        // 3) Send (map provider errors to domain)
         try {
+            log.debug("Dispatching email (templateId={}, recipientsCount={}, html={})",
+                    templateId, recipients.size(), true);
             emailSender.send(emailMessage);
+            log.info("Email queued/sent successfully (templateId={}, recipientsCount={})",
+                    templateId, recipients.size());
         } catch (Exception e) {
-            // Evita filtrar PII en el mensaje
+            log.error("Email provider failed (templateId={}, recipientsCount={}). Reason: {}",
+                    templateId, recipients.size(), e.getMessage(), e);
             throw new EmailSendFailedException("email send failed", e);
         }
     }
 }
-

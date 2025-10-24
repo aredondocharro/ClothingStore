@@ -12,7 +12,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j //falta comentario
+import java.util.Optional;
+
+@Slf4j // Logs are in English and never include raw passwords or hashes
 @RequiredArgsConstructor
 public class ChangePasswordService implements ChangePasswordUseCase {
 
@@ -24,25 +26,41 @@ public class ChangePasswordService implements ChangePasswordUseCase {
     @Override
     @Transactional
     public void change(UserId userId, String currentPassword, String newPassword) {
-        // 1) Cargar credenciales
-        CredentialsView creds = users.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException(userId));
-        // 2) Verificar contraseña actual (si falla -> excepción específica)
+        log.debug("Change password requested (userId={})", userId);
+
+        // 1) Load credentials
+        Optional<CredentialsView> maybeCreds = users.findById(userId);
+        if (maybeCreds.isEmpty()) {
+            log.warn("Change password aborted: user not found (userId={})", userId);
+            throw new UserNotFoundException(userId);
+        }
+        CredentialsView creds = maybeCreds.get();
+        log.debug("User credentials loaded (userId={})", userId);
+
+        // 2) Verify current password
         if (!passwordHasher.matches(currentPassword, creds.passwordHash().getValue())) {
+            log.warn("Current password does not match (userId={})", userId);
             throw new InvalidPasswordException("Password doesn't match");
         }
-        // 3) Política de complejidad
-        passwordPolicy.validate(newPassword);
+        log.debug("Current password verified (userId={})", userId);
 
-        // 4) Evitar reutilizar la misma contraseña
+        // 3) Enforce password policy (do not log the password)
+        passwordPolicy.validate(newPassword);
+        log.debug("New password passed policy validation (userId={})", userId);
+
+        // 4) Prevent reusing the same password
         if (passwordHasher.matches(newPassword, creds.passwordHash().getValue())) {
+            log.warn("New password is the same as the old one (userId={})", userId);
             throw new NewPasswordSameAsOldException();
         }
-        // 5) Persistir nuevo hash
+
+        // 5) Persist new hash
         String newHash = passwordHasher.hash(newPassword);
         users.updatePasswordHash(userId, newHash);
+        log.info("Password hash updated successfully (userId={})", userId);
 
-        // 6) Revocar sesiones activas del usuario
+        // 6) Revoke active sessions for this user
         sessions.revokeAllSessions(userId);
+        log.info("All sessions revoked after password change (userId={})", userId);
     }
 }

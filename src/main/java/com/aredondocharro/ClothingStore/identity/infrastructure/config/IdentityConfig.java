@@ -165,7 +165,6 @@ public class IdentityConfig {
     // Use cases (IN)
     // ========================================================================
 
-    // dentro de IdentityConfig
     @Bean
     public RegisterUserUseCase registerUserUseCase(
             LoadUserPort loadUserPort,
@@ -235,5 +234,21 @@ public class IdentityConfig {
             UserAdminRepositoryPort userAdminRepository
     ) {
         return new UpdateUserRolesService(userAdminRepository);
+    }
+
+    // ========================================================================
+    // Publish events services
+    // ========================================================================
+
+
+    @Bean
+    PublishVerificationEmailOnUserRegisteredService publishVerificationEmailOnUserRegisteredService(
+            TokenGeneratorPort tokens,
+            LoadUserPort loadUsers,
+            EventBusPort eventBus,
+            Clock clock,
+            @Value("${app.verify.baseUrl}") String verifyBaseUrl
+    ) {
+        return new PublishVerificationEmailOnUserRegisteredService(tokens, loadUsers, eventBus, clock, verifyBaseUrl);
     }
 }

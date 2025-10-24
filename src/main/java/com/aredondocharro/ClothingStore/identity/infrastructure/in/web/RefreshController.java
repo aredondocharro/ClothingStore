@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping(value = "/auth", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Auth", description = "Refresh and logout using an HttpOnly refresh cookie")
+@Slf4j
 public class RefreshController {
 
     private final RefreshAccessTokenUseCase refreshUC;
@@ -36,6 +38,7 @@ public class RefreshController {
         this.logoutUC = logoutUC;
         this.cookieManager = cookieManager;
     }
+
     @Operation(
             summary = "Refresh Access Token (HttpOnly cookie)",
             description = "Usa la cookie HttpOnly 'refresh_token' enviada por el navegador; no hay body."
@@ -47,21 +50,27 @@ public class RefreshController {
             @Parameter(hidden = true) HttpServletRequest req,
             @Parameter(hidden = true) HttpServletResponse res
     ) {
-        if (refreshCookie == null || refreshCookie.isBlank()) {
-            // Devuelve tu error estándar (400/401). Usa tu excepción o un ResponseEntity.
+        final String ip = clientIp(req);
+        final String ua = shortUa(req.getHeader("User-Agent"));
+        final boolean cookiePresent = refreshCookie != null && !refreshCookie.isBlank();
+
+        log.debug("Refresh request received (cookiePresent={}, ip={}, ua={})",
+                cookiePresent, ip, ua);
+
+        if (!cookiePresent) {
+            log.warn("Refresh denied: missing '{}' cookie (ip={}, ua={})", REFRESH_COOKIE, ip, ua);
             throw new MissingRefreshCookieException();
         }
 
-        AuthResult result = refreshUC.refresh(
-                refreshCookie,
-                clientIp(req),
-                req.getHeader("User-Agent")
-        );
+        // Do not log token contents
+        AuthResult result = refreshUC.refresh(refreshCookie, ip, req.getHeader("User-Agent"));
 
-        // Rotación: setear la nueva refresh como HttpOnly cookie
+        // Rotation: set the new refresh as an HttpOnly cookie
         cookieManager.setCookie(res, result.refreshToken());
+        log.info("Refresh successful: access token issued and '{}' cookie rotated (ip={}, ua={})",
+                REFRESH_COOKIE, ip, ua);
 
-        // En el body solo el access; el refresh va en la cookie
+        // Body carries only the access token; refresh goes in the cookie
         return ResponseEntity.ok(new AuthResponse(result.accessToken(), null));
     }
 
@@ -83,16 +92,40 @@ public class RefreshController {
             @Parameter(hidden = true) HttpServletRequest req,
             @Parameter(hidden = true) HttpServletResponse res
     ) {
-        if (refreshCookie != null && !refreshCookie.isBlank()) {
-            logoutUC.logout(refreshCookie, clientIp(req));
+        final String ip = clientIp(req);
+        final String ua = shortUa(req.getHeader("User-Agent"));
+        final boolean cookiePresent = refreshCookie != null && !refreshCookie.isBlank();
+
+        log.info("Logout request received (cookiePresent={}, ip={}, ua={})",
+                cookiePresent, ip, ua);
+
+        if (cookiePresent) {
+            log.debug("Revoking refresh session associated with '{}' cookie (ip={}, ua={})",
+                    REFRESH_COOKIE, ip, ua);
+            logoutUC.logout(refreshCookie, ip);
+        } else {
+            log.debug("No session revoked: '{}' cookie not present (ip={}, ua={})", REFRESH_COOKIE, ip, ua);
         }
-        cookieManager.clearCookie(res); // borra la cookie (Max-Age=0, Path=/auth, etc.)
+
+        cookieManager.clearCookie(res); // clears cookie (Max-Age=0, Path=/auth, etc.)
+        log.info("'{}' cookie cleared from client (ip={}, ua={})", REFRESH_COOKIE, ip, ua);
+
         return ResponseEntity.ok(new MessageResponse("Logged out"));
     }
 
     private String clientIp(HttpServletRequest req) {
         String xff = req.getHeader("X-Forwarded-For");
-        return (xff != null && !xff.isBlank()) ? xff.split(",")[0].trim() : req.getRemoteAddr();
+        String chosen = (xff != null && !xff.isBlank()) ? xff.split(",")[0].trim() : req.getRemoteAddr();
+        if (log.isTraceEnabled()) {
+            log.trace("Client IP resolution (chosen='{}', xff='{}', remote='{}')",
+                    chosen, xff, req.getRemoteAddr());
+        }
+        return chosen;
     }
 
+    private String shortUa(String ua) {
+        if (ua == null || ua.isBlank()) return "unknown";
+        // Truncate UA in logs to avoid excessive noise/PII
+        return (ua.length() > 120) ? ua.substring(0, 120) + "…" : ua;
+    }
 }
