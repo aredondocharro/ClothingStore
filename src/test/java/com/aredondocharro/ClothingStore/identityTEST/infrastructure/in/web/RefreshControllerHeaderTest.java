@@ -6,7 +6,6 @@ import com.aredondocharro.ClothingStore.identity.domain.port.in.RefreshAccessTok
 import com.aredondocharro.ClothingStore.identity.domain.port.in.LogoutUseCase;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.RefreshController;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.RefreshCookieManager;
-import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.error.IdentityGlobalErrorHandler;
 import jakarta.servlet.http.Cookie;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;

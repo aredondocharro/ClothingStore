@@ -41,35 +41,30 @@ public class AccessTokenFilter extends OncePerRequestFilter {
             String raw = resolveAccessToken(request);
 
             if (raw != null && !raw.isBlank()) {
+                AuthPrincipal principal = null;
                 try {
-                    AuthPrincipal principal = verifier.verify(raw);
-
-                    // Construimos las autoridades de Spring
-                    List<SimpleGrantedAuthority> authorities =
-                            principal.authorities().stream()
-                                    .filter(Objects::nonNull)
-                                    .map(SimpleGrantedAuthority::new)
-                                    .toList();
-
-                    // IMPORTANTE: el principal ahora es AuthPrincipal (no un String)
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    principal,                   // principal = AuthPrincipal
-                                    null,                        // sin credenciales
-                                    authorities                  // ya autenticado
-                            );
-
-                    authentication.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request)
-                    );
-
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-
+                    principal = verifier.verify(raw); // puede devolver null o lanzar
                 } catch (AccessTokenVerifierPort.ExpiredTokenException |
                          AccessTokenVerifierPort.InvalidTokenException |
                          AccessTokenVerifierPort.MissingRequiredClaimException |
                          AccessTokenVerifierPort.UnsupportedTokenTypeException ex) {
-                    // Dejamos la request sin Authentication; endpoints protegidos responderán 401/403.
+                    // Token inválido/expirado → no autenticamos y seguimos la cadena
+                }
+
+                if (principal != null) {
+                    // Maneja authorities() null como lista vacía
+                    List<SimpleGrantedAuthority> authorities =
+                            (principal.authorities() == null ? List.<String>of() : principal.authorities())
+                                    .stream()
+                                    .filter(Objects::nonNull)
+                                    .map(SimpleGrantedAuthority::new)
+                                    .toList();
+
+                    var authentication = new UsernamePasswordAuthenticationToken(
+                            principal, null, authorities
+                    );
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             }
         }
