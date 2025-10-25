@@ -2,11 +2,11 @@ package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence
 
 import com.aredondocharro.ClothingStore.identity.domain.exception.UserNotFoundException;
 import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
-import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.view.CredentialsView;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.UserEntity;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.UserEntityMapper;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,14 +28,12 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
         log.debug("Finding user by email={}", maskEmail(email.getValue()));
 
         Optional<UserEntity> opt = repo.findByEmailIgnoreCase(email.getValue());
-        if (opt.isEmpty()) {
-            log.debug("User not found by email={}", maskEmail(email.getValue()));
-            return Optional.empty();
-        }
+        opt.ifPresentOrElse(
+                u -> log.debug("User found id={} email={}", u.getId(), maskEmail(u.getEmail())),
+                () -> log.debug("User not found by email={}", maskEmail(email.getValue()))
+        );
 
-        UserEntity u = opt.get();
-        log.debug("User found id={} email={}", u.getId(), maskEmail(u.getEmail()));
-        return Optional.of(toView(u));
+        return opt.map(UserEntityMapper::toCredentialsView);
     }
 
     @Override
@@ -44,14 +42,12 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
         log.debug("Finding user by id={}", id);
 
         Optional<UserEntity> opt = repo.findById(id.value());
-        if (opt.isEmpty()) {
-            log.debug("User not found id={}", id);
-            return Optional.empty();
-        }
+        opt.ifPresentOrElse(
+                u -> log.debug("User found id={} email={}", u.getId(), maskEmail(u.getEmail())),
+                () -> log.debug("User not found id={}", id)
+        );
 
-        UserEntity u = opt.get();
-        log.debug("User found id={} email={}", u.getId(), maskEmail(u.getEmail()));
-        return Optional.of(toView(u));
+        return opt.map(UserEntityMapper::toCredentialsView);
     }
 
     @Override
@@ -82,14 +78,5 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
 
         repo.delete(u);
         log.info("User deleted id={}", id);
-    }
-
-    private static CredentialsView toView(UserEntity u) {
-        return new CredentialsView(
-                UserId.of(u.getId()),                      // String → UserId
-                IdentityEmail.of(u.getEmail()),          // String → IdentityEmail
-                PasswordHash.ofHashed(u.getPasswordHash()), // String → PasswordHash
-                u.isEmailVerified()
-        );
     }
 }

@@ -4,6 +4,7 @@ import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetToken
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.PasswordResetTokenEntity;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.PasswordResetTokenMapper;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,15 +22,7 @@ public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRe
     @Override
     @Transactional
     public void save(Token token) {
-        var e = PasswordResetTokenEntity.builder()
-                .id(token.id().value())
-                .userId(token.userId().value())
-                .tokenHash(token.tokenHash())
-                .expiresAt(token.expiresAt())
-                .usedAt(token.usedAt())
-                .createdAt(token.createdAt())
-                .build();
-
+        PasswordResetTokenEntity e = PasswordResetTokenMapper.toEntity(token);
         jpa.save(e);
     }
 
@@ -50,7 +43,7 @@ public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRe
     @Override
     @Transactional
     public void markUsed(PasswordResetTokenId id, Instant usedAt) {
-        var e = jpa.findById(id.value()).orElseThrow(); // VO -> UUID
+        var e = jpa.findById(id.value()).orElseThrow();
         e.setUsedAt(usedAt);
         jpa.save(e);
     }
@@ -58,6 +51,6 @@ public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRe
     @Override
     @Transactional
     public void deleteAllForUser(UserId userId) {
-        jpa.deleteAllByUserId(userId.value()); // VO -> UUID
+        jpa.deleteAllByUserId(userId.value());
     }
 }

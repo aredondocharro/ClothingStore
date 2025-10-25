@@ -15,7 +15,6 @@ import java.util.UUID;
         name = "refresh_session",
         indexes = {
                 @Index(name = "idx_refresh_token_hash", columnList = "token_hash")
-                // añade los que uses realmente en queries (p.ej. user_id, revoked_at, etc.)
         }
 )
 public class RefreshSessionEntity {
