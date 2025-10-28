@@ -1,4 +1,3 @@
-// src/main/java/com/aredondocharro/ClothingStore/identity/application/RequestPasswordResetService.java
 package com.aredondocharro.ClothingStore.identity.application;
 
 import com.aredondocharro.ClothingStore.identity.contracts.event.PasswordResetEmailRequested;
@@ -9,6 +8,7 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTo
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.view.CredentialsView;
 import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
+import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +21,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
-import java.util.UUID;
+
 
 @Slf4j
 @RequiredArgsConstructor
@@ -41,23 +41,23 @@ public class RequestPasswordResetService implements RequestPasswordResetUseCase 
     @Override
     @Transactional
     public void requestReset(IdentityEmail email) {
-        log.debug("[FORGOT] request for {}", email.getValue());
+        log.debug("[FORGOT] request for {}",LogSanitizer.maskEmail(email.getValue()));
 
         Optional<CredentialsView> userOpt = users.findByEmail(email);
 
         if (userOpt.isEmpty()) {
-            log.info("[FORGOT] email not found (anti-enumeration): {}", email.getValue());
+            log.info("[FORGOT] email not found (anti-enumeration): {}", LogSanitizer.maskEmail(email.getValue()));
             return;
         }
 
         CredentialsView user = userOpt.get();
-        log.debug("[FORGOT] user found id={} email={}", user.id(), user.email().getValue());
+        log.debug("[FORGOT] user found id={} email={}", user.id(), LogSanitizer.maskEmail(user.email().getValue()));
 
 
         tokens.deleteAllForUser(user.id());
         String rawToken = generateUrlSafeToken(TOKEN_BYTES);
 
-        //MUY IMPORTANTE: BORRAR ESTO ANTES DE PRODUCCIÓN
+        //MUY IMPORTANTE: BORRAR ESTO ANTES DE PRODUCCIÓN -SOLO PARA TESTING Y DEBUGGING-
         log.warn("[TMP] RESET TOKEN => {}", rawToken);
 
         String tokenHash = sha256(rawToken);
@@ -68,7 +68,7 @@ public class RequestPasswordResetService implements RequestPasswordResetUseCase 
         ));
         String link = resetBaseUrl + "?token=" + rawToken;
         eventBus.publish(new PasswordResetEmailRequested(user.email().getValue(), link, now));
-        log.info("[FORGOT] published PasswordResetEmailRequested to {}", user.email().getValue());
+        log.info("[FORGOT] published PasswordResetEmailRequested to {}", LogSanitizer.maskEmail(user.email().getValue()));
     }
 
     /* ===================== helpers ===================== */

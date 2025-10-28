@@ -56,7 +56,7 @@ public class RegisterUserService implements RegisterUserUseCase {
         User saved = saveUserPort.save(user);
 
         // (Direct email for now; replace with domain event when ready)
-        eventBus.publish(new UserRegistered(userId.value(), email.getValue(), now));
+        eventBus.publish(new UserRegistered(userId.value(), now));
 
         log.info("PUBLISHED: User registered id={} email={}", saved.id(), LogSanitizer.maskEmail(saved.email().getValue()));
         return new AuthResult(null, null);

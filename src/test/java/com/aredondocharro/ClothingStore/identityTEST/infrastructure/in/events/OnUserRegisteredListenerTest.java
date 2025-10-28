@@ -18,7 +18,7 @@ class OnUserRegisteredListenerTest {
         PublishVerificationEmailOnUserRegisteredService handler = mock(PublishVerificationEmailOnUserRegisteredService.class);
         OnUserRegisteredListener listener = new OnUserRegisteredListener(handler);
 
-        var evt = new UserRegistered(UserId.newId().value(), IdentityEmail.of("u@example.com").getValue(), Instant.now());
+        var evt = new UserRegistered(UserId.newId().value(), Instant.now());
         listener.on(evt);
 
         verify(handler).on(evt);

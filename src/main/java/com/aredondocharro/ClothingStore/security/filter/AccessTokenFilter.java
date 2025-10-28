@@ -71,7 +71,6 @@ public class AccessTokenFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
-
     /** Lee Authorization: Bearer <token>. */
     @Nullable
     private String resolveAccessToken(HttpServletRequest request) {

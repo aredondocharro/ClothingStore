@@ -58,7 +58,6 @@ class RegisterPublishesEventTest {
         verify(eventBus).publish(ev.capture());
 
         // Assertions del evento
-        assertThat(ev.getValue().email()).isEqualTo("john@example.com");
         assertThat(ev.getValue().occurredAt()).isEqualTo(Instant.now(clock));
         // userId del evento coincide con el del agregado persistido
         assertThat(ev.getValue().userId()).isEqualTo(saved.getValue().id().value());

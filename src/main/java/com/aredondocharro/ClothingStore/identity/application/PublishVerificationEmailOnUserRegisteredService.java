@@ -37,9 +37,10 @@ public class PublishVerificationEmailOnUserRegisteredService {
         String token = tokens.generateVerificationToken(user);
         String url = verifyBaseUrl + "?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
 
-        eventBus.publish(new VerificationEmailRequested(e.email(), url, Instant.now(clock)));
+        String email = user.email().getValue();
+        eventBus.publish(new VerificationEmailRequested(email, url, Instant.now(clock)));
         log.info("Published VerificationEmailRequested (userId={}, email={})",
-                e.userId(), LogSanitizer.maskEmail(e.email()));
+                e.userId(), LogSanitizer.maskEmail(email));
         // Do NOT log token or URL
     }
 }

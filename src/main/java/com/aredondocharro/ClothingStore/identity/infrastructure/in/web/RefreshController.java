@@ -6,11 +6,14 @@ import com.aredondocharro.ClothingStore.identity.domain.port.in.LogoutUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.RefreshAccessTokenUseCase;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.AuthResponse;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.MessageResponse;
+import com.aredondocharro.ClothingStore.shared.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -41,8 +44,54 @@ public class RefreshController {
 
     @Operation(
             summary = "Refresh Access Token (HttpOnly cookie)",
-            description = "Usa la cookie HttpOnly 'refresh_token' enviada por el navegador; no hay body."
+            description = "Uses the HttpOnly 'refresh_token' cookie sent by the browser; no request body."
     )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Access token issued and refresh cookie rotated",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AuthResponse.class),
+                            examples = @ExampleObject(value = """
+                    { "accessToken": "<jwt-access>" }
+                    """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Missing refresh cookie",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                    { "code": "auth.missing_refresh_cookie", "message": "Missing 'refresh_token' cookie" }
+                    """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Invalid or expired refresh token",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                    { "code": "auth.invalid_refresh", "message": "Invalid or expired refresh token" }
+                    """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Refresh reuse detected (session security policy)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                    { "code": "auth.refresh_reuse_detected", "message": "Refresh token reuse detected; sessions revoked" }
+                    """)
+                    )
+            )
+    })
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(
             @Parameter(hidden = true)
@@ -77,14 +126,23 @@ public class RefreshController {
     @Operation(
             summary = "Logout (revoke current refresh)",
             description = """
-        Revokes the refresh session associated with the HttpOnly cookie and clears the cookie.
-        Use this to log out from the current device.
-        """,
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Logged out",
-                            content = @Content(schema = @Schema(implementation = MessageResponse.class)))
-            }
+            Revokes the refresh session associated with the HttpOnly cookie and clears the cookie.
+            Use this to log out from the current device.
+            """
     )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Logged out",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = MessageResponse.class),
+                            examples = @ExampleObject(value = """
+                    { "message": "Logged out" }
+                    """)
+                    )
+            )
+    })
     @PostMapping("/logout")
     public ResponseEntity<MessageResponse> logout(
             @Parameter(hidden = true)

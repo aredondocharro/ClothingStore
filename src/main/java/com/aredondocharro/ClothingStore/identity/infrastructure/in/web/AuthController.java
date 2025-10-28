@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -41,8 +40,6 @@ public class AuthController {
     private final DeleteUserUseCase deleteUserUC;
     private final RefreshCookieManager cookieManager; // Gestor de cookie HttpOnly para refresh
 
-
-
     @Operation(
             summary = "Register a new user (email verification required)",
             description = "Creates the user with unverified email, sends a verification email, and returns HTTP 202 (Accepted).",
@@ -52,17 +49,47 @@ public class AuthController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = RegisterRequest.class),
                             examples = @ExampleObject(
-                                    value = "{ \"email\": \"user@example.com\", \"password\": \"Secret123!\", \"confirmPassword\": \"Secret123!\" }"
+                                    name = "register",
+                                    value = """
+                        { "email": "user@example.com", "password": "Secret123!", "confirmPassword": "Secret123!" }
+                        """
                             )
                     )
             ),
             responses = {
-                    @ApiResponse(responseCode = "202", description = "Registration accepted",
-                            content = @Content(schema = @Schema(implementation = MessageResponse.class))),
-                    @ApiResponse(responseCode = "409", description = "Email already registered",
-                            content = @Content(schema = @Schema(implementation = MessageResponse.class))),
-                    @ApiResponse(responseCode = "400", description = "Validation error",
-                            content = @Content(schema = @Schema(implementation = MessageResponse.class)))
+                    @ApiResponse(
+                            responseCode = "202",
+                            description = "Registration accepted",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = MessageResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "message": "Check your email to verify your account." }
+                        """)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "Email already registered",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = MessageResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "message": "Email already registered" }
+                        """)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Validation error",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = MessageResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "message": "Validation error" }
+                        """)
+                            )
+                    )
             }
     )
     @PostMapping(path = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -72,7 +99,6 @@ public class AuthController {
 
         registerUC.register(emailVO, req.getPassword(), req.getConfirmPassword());
 
-
         log.info("Registration accepted for email={}, pending verification", LogSanitizer.maskEmail(emailVO.getValue()));
         return ResponseEntity.accepted()
                 .body(new MessageResponse("Check your email to verify your account."));
@@ -80,13 +106,30 @@ public class AuthController {
 
     @Operation(
             summary = "Verify email (autologin)",
-            description = "Validates the verification token and activates the account. If valid, issues tokens: " +
-                    "sets refresh as HttpOnly cookie and returns access in response body.",
+            description = "Validates the verification token and activates the account. If valid, issues tokens: sets refresh as HttpOnly cookie and returns access in response body.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Email verified",
-                            content = @Content(schema = @Schema(implementation = AuthResponse.class))),
-                    @ApiResponse(responseCode = "400", description = "Invalid or expired token",
-                            content = @Content(schema = @Schema(implementation = MessageResponse.class)))
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Email verified",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = AuthResponse.class),
+                                    examples = @ExampleObject(name = "success", value = """
+                        { "accessToken": "<jwt-access>" }
+                        """)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid or expired token",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = MessageResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "message": "Invalid or expired token" }
+                        """)
+                            )
+                    )
             }
     )
     @GetMapping("/verify")
@@ -101,41 +144,97 @@ public class AuthController {
         return ResponseEntity.ok(new AuthResponse(result.accessToken(), null));
     }
 
-
     @Operation(
             summary = "Delete account (logout from all devices)",
             description = "Deletes the user account and all associated tokens, effectively logging out from all devices.",
             responses = {
-                    @ApiResponse(responseCode = "204", description = "Account deleted successfully"),
-                    @ApiResponse(responseCode = "401", description = "Unauthorized (invalid or missing token)",
-                            content = @Content(schema = @Schema(implementation = MessageResponse.class))),
-                    @ApiResponse(responseCode = "404", description = "User not found",
-                            content = @Content(schema = @Schema(implementation = MessageResponse.class)))
+                    @ApiResponse(
+                            responseCode = "204",
+                            description = "Account deleted successfully",
+                            content = @Content(schema = @Schema(hidden = true)) // 204: sin body
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Unauthorized (invalid or missing token)",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = MessageResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "message": "Unauthorized" }
+                        """)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = MessageResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "message": "User not found" }
+                        """)
+                            )
+                    )
             }
     )
-
-
     @DeleteMapping("/delete")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<MessageResponse> deleteAccount(
-            @AuthenticationPrincipal AuthPrincipal auth )
-    {
+    public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal AuthPrincipal auth) {
         UserId userId = UserId.of(UUID.fromString(auth.userId()));
         deleteUserUC.delete(userId);
-        return ResponseEntity.ok(new MessageResponse("Account deleted successfully"));
+        return ResponseEntity.noContent().build(); // 204, sin body
     }
-
 
     @Operation(
             summary = "Login with email and password",
             description = "Authenticates user. Sets refresh as HttpOnly cookie and returns access in the response body.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = LoginRequest.class),
+                            examples = @ExampleObject(
+                                    name = "login",
+                                    value = """
+                        { "email": "user@example.com", "password": "Secret123!" }
+                        """
+                            )
+                    )
+            ),
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Authenticated",
-                            content = @Content(schema = @Schema(implementation = AuthResponse.class))),
-                    @ApiResponse(responseCode = "401", description = "Invalid credentials",
-                            content = @Content(schema = @Schema(implementation = MessageResponse.class))),
-                    @ApiResponse(responseCode = "403", description = "Email not verified",
-                            content = @Content(schema = @Schema(implementation = MessageResponse.class)))
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Authenticated",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = AuthResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "accessToken": "<jwt-access>" }
+                        """)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "401",
+                            description = "Invalid credentials",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = MessageResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "message": "Invalid credentials" }
+                        """)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "403",
+                            description = "Email not verified",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = MessageResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "message": "Please verify your email first" }
+                        """)
+                            )
+                    )
             }
     )
     @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -147,8 +246,7 @@ public class AuthController {
         AuthResult result = loginUC.login(emailVO, req.password());
 
         // Seteamos cookie HttpOnly con el refresh (persistido en BD)
-        log.info("Setting refresh cookie, len={}",
-                result.refreshToken() != null ? result.refreshToken().length() : 0);
+        log.info("Setting refresh cookie, len={}", result.refreshToken() != null ? result.refreshToken().length() : 0);
         cookieManager.setCookie(res, result.refreshToken());
 
         log.info("Login success email={}", LogSanitizer.maskEmail(emailVO.getValue()));
