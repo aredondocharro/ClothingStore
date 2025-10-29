@@ -8,6 +8,7 @@ import com.aredondocharro.ClothingStore.identity.domain.port.in.ResetPasswordUse
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.ChangePasswordRequest;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.ForgotPasswordRequest;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.ResetPasswordRequest;
+import com.aredondocharro.ClothingStore.security.port.AuthPrincipal;
 import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import com.aredondocharro.ClothingStore.shared.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,7 +25,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -51,7 +52,8 @@ public class AuthPasswordController {
 
     @Operation(
             summary = "Forgot: request a reset email",
-            description = "Always returns 202 to prevent user enumeration."
+            description = "Always returns 202 to prevent user enumeration.",
+            security = {} // público en la doc (anula el requirement global)
     )
     @RequestBody(
             required = true,
@@ -85,7 +87,7 @@ public class AuthPasswordController {
             )
     })
     @PostMapping(value = "/password/forgot", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Void> forgot(@Valid @RequestBody ForgotPasswordRequest req) {
+    public ResponseEntity<Void> forgot(@Valid @org.springframework.web.bind.annotation.RequestBody ForgotPasswordRequest req) {
         IdentityEmail email = IdentityEmail.of(req.email());
         log.debug("Password FORGOT requested for email={}", maskEmail(email.getValue()));
         requestReset.requestReset(email);
@@ -93,7 +95,10 @@ public class AuthPasswordController {
         return ResponseEntity.accepted().build();
     }
 
-    @Operation(summary = "Reset: apply a new password using the token")
+    @Operation(
+            summary = "Reset: apply a new password using the token",
+            security = {} // público en la doc (anula el requirement global)
+    )
     @RequestBody(
             required = true,
             content = @Content(
@@ -120,8 +125,8 @@ public class AuthPasswordController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
-                    { "code": "identity.invalid_or_expired_token", "message": "Invalid or expired token" }
-                    """)
+                { "code": "identity.invalid_or_expired_token", "message": "Invalid or expired token" }
+                """)
                     )
             ),
             @ApiResponse(
@@ -131,8 +136,8 @@ public class AuthPasswordController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
-                    { "code": "identity.password_policy_violation", "message": "Password does not meet policy requirements" }
-                    """)
+                { "code": "identity.password_policy_violation", "message": "Password does not meet policy requirements" }
+                """)
                     )
             )
     })
@@ -140,7 +145,7 @@ public class AuthPasswordController {
     public ResponseEntity<Void> reset(
             @Parameter(description = "Password reset token", example = "Vnpuft***")
             @RequestParam("token") String token,
-            @Valid @RequestBody ResetPasswordRequest req) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody ResetPasswordRequest req) {
 
         log.debug("Password RESET called with token={}...", LogSanitizer.maskToken(token));
         resetPassword.reset(token, req.newPassword());
@@ -148,8 +153,11 @@ public class AuthPasswordController {
         return ResponseEntity.noContent().build();
     }
 
-    @Operation(summary = "Change: change password (authenticated user)")
-    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Change: change password (authenticated user)"
+            // Con seguridad global ya basta; puedes dejar o quitar el siguiente requisito explícito:
+            , security = @SecurityRequirement(name = "bearerAuth")
+    )
     @RequestBody(
             required = true,
             content = @Content(
@@ -176,8 +184,8 @@ public class AuthPasswordController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
-                    { "code": "identity.current_password_incorrect", "message": "Current password is incorrect" }
-                    """)
+                { "code": "identity.current_password_incorrect", "message": "Current password is incorrect" }
+                """)
                     )
             ),
             @ApiResponse(
@@ -187,8 +195,8 @@ public class AuthPasswordController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
-                    { "code": "auth.unauthorized", "message": "Unauthorized" }
-                    """)
+                { "code": "security.unauthorized", "message": "Authentication required" }
+                """)
                     )
             ),
             @ApiResponse(
@@ -198,15 +206,15 @@ public class AuthPasswordController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
-                    { "code": "identity.password_policy_violation", "message": "Password does not meet policy requirements" }
-                    """)
+                { "code": "identity.password_policy_violation", "message": "Password does not meet policy requirements" }
+                """)
                     )
             )
     })
     @PostMapping(value = "/password/change", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Void> change(Authentication auth,
-                                       @Valid @RequestBody ChangePasswordRequest req) {
-        UserId userId = UserId.of(UUID.fromString(auth.getName()));
+    public ResponseEntity<Void> change(@AuthenticationPrincipal AuthPrincipal me,
+                                       @Valid @org.springframework.web.bind.annotation.RequestBody ChangePasswordRequest req) {
+        UserId userId = UserId.of(UUID.fromString(me.userId()));
         log.debug("Password CHANGE requested by userId={}", userId);
         changePassword.change(userId, req.currentPassword(), req.newPassword());
         log.info("Password CHANGE completed for userId={}", userId);

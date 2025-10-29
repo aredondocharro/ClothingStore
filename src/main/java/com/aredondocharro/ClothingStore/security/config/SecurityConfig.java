@@ -66,9 +66,22 @@ public class SecurityConfig {
                         .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'; object-src 'none'"))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        // --- SOLO endpoints realmente públicos en /auth ---
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,  "/auth/verify").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/auth/password/forgot", "/auth/password/reset").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/auth/refresh", "/auth/logout").permitAll()
+
+                        // Swagger
                         .requestMatchers("/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html").permitAll()
+
+                        // (Opcional pero práctico) preflight CORS
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Admin por URL
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                        // Todo lo demás → autenticado (401 si no hay token)
                         .anyRequest().authenticated()
                 );
 

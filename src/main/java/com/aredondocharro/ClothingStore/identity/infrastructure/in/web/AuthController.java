@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -21,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -177,8 +177,8 @@ public class AuthController {
                     )
             }
     )
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/delete")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal AuthPrincipal auth) {
         UserId userId = UserId.of(UUID.fromString(auth.userId()));
         deleteUserUC.delete(userId);

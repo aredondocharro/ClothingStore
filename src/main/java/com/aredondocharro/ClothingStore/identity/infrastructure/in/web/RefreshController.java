@@ -44,7 +44,8 @@ public class RefreshController {
 
     @Operation(
             summary = "Refresh Access Token (HttpOnly cookie)",
-            description = "Uses the HttpOnly 'refresh_token' cookie sent by the browser; no request body."
+            description = "Uses the HttpOnly 'refresh_token' cookie sent by the browser; no request body.",
+            security = {} // público en la doc (anula el requisito global)
     )
     @ApiResponses({
             @ApiResponse(
@@ -54,8 +55,8 @@ public class RefreshController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = AuthResponse.class),
                             examples = @ExampleObject(value = """
-                    { "accessToken": "<jwt-access>" }
-                    """)
+                { "accessToken": "<jwt-access>" }
+                """)
                     )
             ),
             @ApiResponse(
@@ -65,8 +66,8 @@ public class RefreshController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
-                    { "code": "auth.missing_refresh_cookie", "message": "Missing 'refresh_token' cookie" }
-                    """)
+                { "code": "auth.missing_refresh_cookie", "message": "Missing 'refresh_token' cookie" }
+                """)
                     )
             ),
             @ApiResponse(
@@ -76,8 +77,8 @@ public class RefreshController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
-                    { "code": "auth.invalid_refresh", "message": "Invalid or expired refresh token" }
-                    """)
+                { "code": "auth.invalid_refresh", "message": "Invalid or expired refresh token" }
+                """)
                     )
             ),
             @ApiResponse(
@@ -87,8 +88,8 @@ public class RefreshController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
-                    { "code": "auth.refresh_reuse_detected", "message": "Refresh token reuse detected; sessions revoked" }
-                    """)
+                { "code": "auth.refresh_reuse_detected", "message": "Refresh token reuse detected; sessions revoked" }
+                """)
                     )
             )
     })
@@ -128,7 +129,8 @@ public class RefreshController {
             description = """
             Revokes the refresh session associated with the HttpOnly cookie and clears the cookie.
             Use this to log out from the current device.
-            """
+            """,
+            security = {} // público en la doc (anula el requisito global)
     )
     @ApiResponses({
             @ApiResponse(
@@ -138,8 +140,8 @@ public class RefreshController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = MessageResponse.class),
                             examples = @ExampleObject(value = """
-                    { "message": "Logged out" }
-                    """)
+                { "message": "Logged out" }
+                """)
                     )
             )
     })

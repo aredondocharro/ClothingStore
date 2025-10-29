@@ -22,10 +22,17 @@ public class TestSecurityConfig {
                 )
                 .anonymous(a -> a.disable()) // clave para que el anónimo sea 401 (no 403)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // --- SOLO endpoints realmente públicos ---
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,  "/auth/verify").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/auth/password/forgot", "/auth/password/reset").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 );
+
         // Importante: NO añadimos AccessTokenFilter aquí
         return http.build();
     }
