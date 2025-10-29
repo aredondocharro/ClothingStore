@@ -11,7 +11,6 @@ import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
 import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -39,7 +38,6 @@ public class RequestPasswordResetService implements RequestPasswordResetUseCase 
 
 
     @Override
-    @Transactional
     public void requestReset(IdentityEmail email) {
         log.debug("[FORGOT] request for {}",LogSanitizer.maskEmail(email.getValue()));
 

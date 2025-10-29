@@ -17,10 +17,15 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.NoopSessionManager;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.SimplePasswordPolicy;
+import com.aredondocharro.ClothingStore.identity.infrastructure.tx.TransactionalChangePasswordUseCase;
+import com.aredondocharro.ClothingStore.identity.infrastructure.tx.TransactionalRegisterUserUseCase;
+import com.aredondocharro.ClothingStore.identity.infrastructure.tx.TransactionalRequestPasswordResetUseCase;
+import com.aredondocharro.ClothingStore.identity.infrastructure.tx.TransactionalResetPasswordUseCase;
 import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -250,5 +255,36 @@ public class IdentityConfig {
             @Value("${app.verify.baseUrl}") String verifyBaseUrl
     ) {
         return new PublishVerificationEmailOnUserRegisteredService(tokens, loadUsers, eventBus, clock, verifyBaseUrl);
+    }
+
+    // ========================================================================
+    // TX Management
+    // ========================================================================
+
+    //Por qué @Primary: Ya existe un bean del mismo tipo (el servicio puro).
+    // Con @Primary, cuando un controlador pide RegisterUserUseCase, Spring entrega el wrapper transaccional.
+
+    @Bean
+    @Primary
+    RegisterUserUseCase registerUserTx(RegisterUserUseCase delegate) {
+        return new TransactionalRegisterUserUseCase(delegate);
+    }
+
+    @Bean
+    @Primary
+    ChangePasswordUseCase changePasswordTx(ChangePasswordUseCase delegate) {
+        return new TransactionalChangePasswordUseCase(delegate);
+    }
+
+    @Bean
+    @Primary
+    RequestPasswordResetUseCase requestPasswordResetTx(RequestPasswordResetUseCase delegate) {
+        return new TransactionalRequestPasswordResetUseCase(delegate);
+    }
+
+    @Bean
+    @Primary
+    ResetPasswordUseCase resetPasswordTx(ResetPasswordUseCase delegate) {
+        return new TransactionalResetPasswordUseCase(delegate);
     }
 }

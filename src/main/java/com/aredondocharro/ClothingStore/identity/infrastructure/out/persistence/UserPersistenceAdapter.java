@@ -8,6 +8,7 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -16,26 +17,26 @@ import static com.aredondocharro.ClothingStore.shared.log.LogSanitizer.maskEmail
 
 @Slf4j
 @RequiredArgsConstructor
+@Transactional(propagation = Propagation.MANDATORY) // exige TX abierta por el wrapper
 public class UserPersistenceAdapter implements LoadUserPort, SaveUserPort {
 
     private final SpringDataUserRepository repo;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
     public Optional<User> findByEmail(IdentityEmail email) {
         log.debug("Finding user by email={}", maskEmail(email.getValue()));
         return repo.findByEmailIgnoreCase(email.getValue()).map(UserEntityMapper::toDomain);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
     public Optional<User> findById(UserId id) {
         log.debug("Finding user by id={}", id.value());
         return repo.findById(id.value()).map(UserEntityMapper::toDomain);
     }
 
     @Override
-    @Transactional
     public User save(User user) {
         if (user.id() == null) {
             throw new IllegalArgumentException("User.id must be provided by application layer");

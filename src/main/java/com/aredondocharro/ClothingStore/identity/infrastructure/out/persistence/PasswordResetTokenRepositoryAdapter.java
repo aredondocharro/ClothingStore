@@ -8,6 +8,7 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -15,24 +16,24 @@ import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
+@Transactional(propagation = Propagation.MANDATORY) // exige TX abierta por el wrapper
 public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRepositoryPort {
 
     private final SpringPasswordResetTokenJpaRepository jpa;
 
     @Override
-    @Transactional
     public void save(Token token) {
         PasswordResetTokenEntity e = PasswordResetTokenMapper.toEntity(token);
         jpa.save(e);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY) // consulta
     public Optional<Token> findValidByHash(String tokenHash, Instant now) {
         return jpa.findByTokenHashAndExpiresAtAfterAndUsedAtIsNull(tokenHash, now)
                 .map(e -> new Token(
-                        PasswordResetTokenId.of(e.getId()), // UUID -> VO
-                        UserId.of(e.getUserId()),           // UUID -> VO
+                        PasswordResetTokenId.of(e.getId()),
+                        UserId.of(e.getUserId()),
                         e.getTokenHash(),
                         e.getExpiresAt(),
                         e.getUsedAt(),
@@ -41,7 +42,6 @@ public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRe
     }
 
     @Override
-    @Transactional
     public void markUsed(PasswordResetTokenId id, Instant usedAt) {
         var e = jpa.findById(id.value()).orElseThrow();
         e.setUsedAt(usedAt);
@@ -49,7 +49,6 @@ public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRe
     }
 
     @Override
-    @Transactional
     public void deleteAllForUser(UserId userId) {
         jpa.deleteAllByUserId(userId.value());
     }

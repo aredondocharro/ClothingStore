@@ -10,7 +10,7 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryP
 import com.aredondocharro.ClothingStore.identity.domain.port.out.view.CredentialsView;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
+
 
 import java.util.Optional;
 
@@ -24,7 +24,6 @@ public class ChangePasswordService implements ChangePasswordUseCase {
     private final SessionManagerPort sessions;
 
     @Override
-    @Transactional
     public void change(UserId userId, String currentPassword, String newPassword) {
         log.debug("Change password requested (userId={})", userId);
 

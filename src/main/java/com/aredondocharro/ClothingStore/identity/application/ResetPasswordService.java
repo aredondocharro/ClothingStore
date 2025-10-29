@@ -9,7 +9,6 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.SessionManagerP
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -30,7 +29,6 @@ public class ResetPasswordService implements ResetPasswordUseCase {
     private final Clock clock;
 
     @Override
-    @Transactional
     public void reset(String rawToken, String newPassword) {
         Instant now = Instant.now(clock);
 

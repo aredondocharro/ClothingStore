@@ -10,6 +10,7 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -18,12 +19,13 @@ import static com.aredondocharro.ClothingStore.shared.log.LogSanitizer.maskEmail
 
 @Slf4j
 @RequiredArgsConstructor
+@Transactional(propagation = Propagation.MANDATORY) // exige una TX abierta por el wrapper
 public class UserRepositoryAdapter implements UserRepositoryPort {
 
     private final SpringDataUserRepository repo;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
     public Optional<CredentialsView> findByEmail(IdentityEmail email) {
         log.debug("Finding user by email={}", maskEmail(email.getValue()));
 
@@ -37,7 +39,7 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
     public Optional<CredentialsView> findById(UserId id) {
         log.debug("Finding user by id={}", id);
 
@@ -51,7 +53,6 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     @Override
-    @Transactional
     public void updatePasswordHash(UserId id, String newHash) {
         log.debug("Updating password hash for user id={}", id);
 
@@ -67,7 +68,6 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
     }
 
     @Override
-    @Transactional
     public void delete(UserId id) {
         log.warn("Trying to delete the user account id={}", id);
 

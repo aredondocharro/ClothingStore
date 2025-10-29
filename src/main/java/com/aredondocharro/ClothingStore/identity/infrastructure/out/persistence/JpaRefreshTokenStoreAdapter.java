@@ -7,6 +7,7 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataRefreshSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -17,19 +18,18 @@ import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
+@Transactional(propagation = Propagation.MANDATORY) // ← exige una TX abierta por el wrapper
 public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
 
     private final SpringDataRefreshSessionRepository repo;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY) // ← query
     public Optional<RefreshSession> findByJti(String jti) {
-        // si jti es @Id en la entidad, también valdría repo.findById(jti)
         return repo.findByJti(jti).map(this::toDomain);
     }
 
     @Override
-    @Transactional
     public RefreshSession saveNew(RefreshSession session, String rawRefreshToken) {
         RefreshSessionEntity entity = toEntity(session);
         entity.setTokenHash(sha256(rawRefreshToken)); // hex 64 chars
@@ -38,7 +38,6 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     }
 
     @Override
-    @Transactional
     public void markReplaced(String oldJti, String newJti, Instant when) {
         repo.findById(oldJti).ifPresent(e -> {
             e.setRevokedAt(when);
@@ -48,7 +47,6 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     }
 
     @Override
-    @Transactional
     public void revoke(String jti, String reason, Instant when) {
         repo.findById(jti).ifPresent(e -> {
             if (e.getRevokedAt() == null) {
@@ -60,9 +58,7 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     }
 
     @Override
-    @Transactional
     public void revokeAllForUser(UserId userId, String reason, Instant when) {
-        // Versión eficiente por UPDATE masivo
         int n = repo.revokeAllForUser(userId.value(), when);
         log.warn("All refresh sessions revoked for userId={} reason={} updated={}", userId, reason, n);
     }
@@ -72,7 +68,7 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     private RefreshSessionEntity toEntity(RefreshSession s) {
         return RefreshSessionEntity.builder()
                 .jti(s.jti())
-                .userId(s.userId().value())            // VO -> UUID
+                .userId(s.userId().value())
                 .expiresAt(s.expiresAt())
                 .createdAt(s.createdAt())
                 .revokedAt(s.revokedAt())
@@ -86,7 +82,7 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
     private RefreshSession toDomain(RefreshSessionEntity e) {
         return new RefreshSession(
                 e.getJti(),
-                UserId.of(e.getUserId()),              // UUID -> VO
+                UserId.of(e.getUserId()),
                 e.getExpiresAt(),
                 e.getCreatedAt(),
                 e.getRevokedAt(),

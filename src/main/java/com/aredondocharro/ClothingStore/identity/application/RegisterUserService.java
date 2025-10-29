@@ -20,7 +20,7 @@ import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
 import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
+
 
 import java.time.Clock;
 import java.time.Instant;
@@ -38,7 +38,6 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final EventBusPort eventBus;
 
     @Override
-    @Transactional
     public AuthResult register(IdentityEmail email, String rawPassword, String confirmPassword) {
         if (rawPassword == null || rawPassword.isBlank()) throw new PasswordRequiredException();
         passwordPolicy.validate(rawPassword);

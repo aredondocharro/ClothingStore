@@ -10,6 +10,7 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -18,17 +19,19 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
+@Transactional(propagation = Propagation.MANDATORY) // exige TX abierta por el wrapper
 public class UserAdminRepositoryAdapter implements UserAdminRepositoryPort {
 
     private final SpringDataUserRepository repo;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
     public boolean existsById(UserId id) {
         return repo.existsById(id.value());
     }
+
     @Override
-    @Transactional
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
     public Optional<UserView> findById(UserId id) {
         Optional<UserEntity> opt = repo.findById(id.value());
         if (opt.isEmpty()) {
@@ -37,7 +40,7 @@ public class UserAdminRepositoryAdapter implements UserAdminRepositoryPort {
         }
 
         UserEntity u = opt.get();
-        log.debug("User found id={} email={}", u.getId(), u.getEmail().toString());
+        log.debug("User found id={} email={}", u.getId(), u.getEmail());
         return Optional.of(new UserView(
                 u.getId(),
                 IdentityEmail.of(u.getEmail()),
@@ -47,7 +50,6 @@ public class UserAdminRepositoryAdapter implements UserAdminRepositoryPort {
     }
 
     @Override
-    @Transactional
     public boolean deleteById(UserId id) {
         if (!repo.existsById(id.value())) {
             log.warn("Attempted to delete non-existent user with id={}", id);
@@ -59,27 +61,25 @@ public class UserAdminRepositoryAdapter implements UserAdminRepositoryPort {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
     public boolean hasRole(UserId id, Role role) {
         return repo.userHasRole(id.value(), role);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
     public int countUsersWithRole(Role role) {
         return repo.countUsersWithRole(role);
     }
 
     @Override
-    @Transactional
     public void updateRoles(UserId id, Set<Role> roles) {
         UserEntity entity = repo.findById(id.value())
                 .orElseThrow(() -> new UserNotFoundException(id));
 
         Set<Role> oldRoles = entity.getRoles();
-        entity.setRoles(roles);  // ✅ Ya es Set<Role>, no necesitas map
+        entity.setRoles(roles);
         repo.save(entity);
-
 
         log.info("Roles updated for user id={}: {} -> {}",
                 id, oldRoles, roles.stream().map(Enum::name).collect(Collectors.toSet()));
