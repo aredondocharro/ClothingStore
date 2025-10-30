@@ -2,18 +2,17 @@ package com.aredondocharro.ClothingStore.identity.infrastructure.tx;
 
 import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.AuthResult;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.RegisterUserUseCase;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.LoginUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
-public class TransactionalRegisterUserUseCase implements RegisterUserUseCase {
-
-    private final RegisterUserUseCase delegate;
+public class TransactionalLoginUseCase implements LoginUseCase {
+    private final LoginUseCase delegate;
 
     @Override
     @Transactional
-    public AuthResult register(IdentityEmail email, String rawPassword, String confirmPassword) {
-        return delegate.register(email, rawPassword, confirmPassword);
+    public AuthResult login(IdentityEmail email, String rawPassword) {
+        return delegate.login(email, rawPassword);
     }
 }

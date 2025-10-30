@@ -1,4 +1,3 @@
-// TransactionalResetPasswordUseCase.java
 package com.aredondocharro.ClothingStore.identity.infrastructure.tx;
 
 import com.aredondocharro.ClothingStore.identity.domain.port.in.ResetPasswordUseCase;

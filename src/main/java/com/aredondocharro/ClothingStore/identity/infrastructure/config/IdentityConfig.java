@@ -17,11 +17,9 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.NoopSessionManager;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.SimplePasswordPolicy;
-import com.aredondocharro.ClothingStore.identity.infrastructure.tx.TransactionalChangePasswordUseCase;
-import com.aredondocharro.ClothingStore.identity.infrastructure.tx.TransactionalRegisterUserUseCase;
-import com.aredondocharro.ClothingStore.identity.infrastructure.tx.TransactionalRequestPasswordResetUseCase;
-import com.aredondocharro.ClothingStore.identity.infrastructure.tx.TransactionalResetPasswordUseCase;
+import com.aredondocharro.ClothingStore.identity.infrastructure.tx.*;
 import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -266,25 +264,62 @@ public class IdentityConfig {
 
     @Bean
     @Primary
-    RegisterUserUseCase registerUserTx(RegisterUserUseCase delegate) {
+    public RegisterUserUseCase registerUserUseCaseTx(@Qualifier("registerUserUseCase") RegisterUserUseCase delegate) {
         return new TransactionalRegisterUserUseCase(delegate);
     }
 
     @Bean
     @Primary
-    ChangePasswordUseCase changePasswordTx(ChangePasswordUseCase delegate) {
-        return new TransactionalChangePasswordUseCase(delegate);
+    public LoginUseCase loginUseCaseTx(@Qualifier("loginUseCase") LoginUseCase delegate) {
+        return new TransactionalLoginUseCase(delegate);
     }
 
     @Bean
     @Primary
-    RequestPasswordResetUseCase requestPasswordResetTx(RequestPasswordResetUseCase delegate) {
+    public VerifyEmailUseCase verifyEmailUseCaseTx(@Qualifier("verifyEmailUseCase") VerifyEmailUseCase delegate) {
+        return new TransactionalVerifyEmailUseCase(delegate);
+    }
+
+    @Bean
+    @Primary
+    public RefreshAccessTokenUseCase refreshAccessTokenUseCaseTx(@Qualifier("refreshAccessTokenUseCase") RefreshAccessTokenUseCase delegate) {
+        return new TransactionalRefreshAccessTokenUseCase(delegate);
+    }
+
+    @Bean
+    @Primary
+    public LogoutUseCase logoutUseCaseTx(@Qualifier("logoutUseCase") LogoutUseCase delegate) {
+        return new TransactionalLogoutUseCase(delegate);
+    }
+
+    @Bean
+    @Primary
+    public DeleteUserUseCase deleteUserUseCaseTx(@Qualifier("deleteUserUseCase") DeleteUserUseCase delegate) {
+        return new TransactionalDeleteUserUseCase(delegate);
+    }
+
+    @Bean
+    @Primary
+    public UpdateUserRolesUseCase updateUserRolesUseCaseTx(@Qualifier("updateUserRolesUseCase") UpdateUserRolesUseCase delegate) {
+        return new TransactionalUpdateUserRolesUseCase(delegate);
+    }
+
+    @Bean
+    @Primary
+    public RequestPasswordResetUseCase requestPasswordResetUseCaseTx(@Qualifier("requestPasswordResetUseCase") RequestPasswordResetUseCase delegate) {
         return new TransactionalRequestPasswordResetUseCase(delegate);
     }
 
     @Bean
     @Primary
-    ResetPasswordUseCase resetPasswordTx(ResetPasswordUseCase delegate) {
+    public ResetPasswordUseCase resetPasswordUseCaseTx(@Qualifier("resetPasswordUseCase") ResetPasswordUseCase delegate) {
         return new TransactionalResetPasswordUseCase(delegate);
     }
+
+    @Bean
+    @Primary
+    public ChangePasswordUseCase changePasswordUseCaseTx(@Qualifier("changePasswordUseCase") ChangePasswordUseCase delegate) {
+        return new TransactionalChangePasswordUseCase(delegate);
+    }
+
 }
