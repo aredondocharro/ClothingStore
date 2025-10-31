@@ -1,13 +1,18 @@
 package com.aredondocharro.ClothingStore.identityTEST.integration.out.persistence;
 
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.UserMapper;
 import com.aredondocharro.ClothingStore.testconfig.TestcontainersConfiguration;
 import com.aredondocharro.ClothingStore.identity.domain.model.*;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserPersistenceAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
@@ -24,10 +29,18 @@ import static org.junit.jupiter.api.Assertions.*;
 @Import({TestcontainersConfiguration.class, UserPersistenceAdapter.class})
 class UserPersistenceAdapterIT {
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @TestConfiguration
+    static class MapstructTestConfig {
+        @Bean
+        UserMapper userMapper() {
+            // Usa la clase generada por MapStruct (UserMapperImpl)
+            return Mappers.getMapper(UserMapper.class);
+        }
+    }
+    @Autowired
     private SpringDataUserRepository repo;
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     private UserPersistenceAdapter adapter;
 
     private static final String HASH =

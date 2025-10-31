@@ -1,11 +1,18 @@
 package com.aredondocharro.ClothingStore.identityTEST.infrastructure.out.persistence;
 
-import com.aredondocharro.ClothingStore.identity.domain.model.*;
+import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
+import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
+import com.aredondocharro.ClothingStore.identity.domain.model.Role;
+import com.aredondocharro.ClothingStore.identity.domain.model.User;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserPersistenceAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.UserEntity;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.UserMapper;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,12 +35,18 @@ class UserJpaAdapterTest {
     private static final String BCRYPT =
             "$2b$10$7EqJtq98hPqEX7fNZaFWoO5f.Pg3rQAYyu3iJ/T9Y2aXx1Z9E6iGa";
 
-    @Test
-    void save_mapsDomainRolesToStrings_andReturnsDomainWithSameRoles() {
-        var adapter = new UserPersistenceAdapter(repo);
+    private UserPersistenceAdapter newAdapter() {
+        UserMapper mapper = Mappers.getMapper(UserMapper.class);
+        return new UserPersistenceAdapter(repo, mapper);
+    }
 
-        var userId = UserId.newId();
-        var now = Instant.now();
+    @Test
+    @DisplayName("save maps domain roles and returns domain with same roles")
+    void save_mapsDomainRolesToStrings_andReturnsDomainWithSameRoles() {
+        UserPersistenceAdapter adapter = newAdapter();
+
+        UserId userId = UserId.newId();
+        Instant now = Instant.now();
 
         // Dominio DEBE venir con id y createdAt (los genera aplicación)
         User domain = User.create(
@@ -50,7 +63,7 @@ class UserJpaAdapterTest {
         User saved = adapter.save(domain);
 
         // Verifica que el adapter mapeó correctamente a la entidad
-        var cap = ArgumentCaptor.forClass(UserEntity.class);
+        ArgumentCaptor<UserEntity> cap = ArgumentCaptor.forClass(UserEntity.class);
         verify(repo).save(cap.capture());
         UserEntity entity = cap.getValue();
 
@@ -65,8 +78,9 @@ class UserJpaAdapterTest {
     }
 
     @Test
+    @DisplayName("findById applies USER fallback when roles are null")
     void findById_nullRoles_defaultsToUser() {
-        var adapter = new UserPersistenceAdapter(repo);
+        UserPersistenceAdapter adapter = newAdapter();
         UUID id = UUID.randomUUID();
 
         UserEntity entity = UserEntity.builder()
@@ -86,8 +100,9 @@ class UserJpaAdapterTest {
     }
 
     @Test
+    @DisplayName("findByEmail maps entity to domain correctly")
     void findByEmail_mapsEntityToDomain() {
-        var adapter = new UserPersistenceAdapter(repo);
+        UserPersistenceAdapter adapter = newAdapter();
         UUID id = UUID.randomUUID();
 
         UserEntity entity = UserEntity.builder()

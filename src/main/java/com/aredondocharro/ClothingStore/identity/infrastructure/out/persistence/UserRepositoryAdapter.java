@@ -6,10 +6,11 @@ import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.view.CredentialsView;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.UserEntity;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.UserEntityMapper;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.UserMapper;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ import static com.aredondocharro.ClothingStore.shared.log.LogSanitizer.maskEmail
 public class UserRepositoryAdapter implements UserRepositoryPort {
 
     private final SpringDataUserRepository repo;
+    private final UserMapper mapper;
 
     @Override
     @Transactional(readOnly = true, propagation = Propagation.MANDATORY)
@@ -35,7 +37,7 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
                 () -> log.debug("User not found by email={}", maskEmail(email.getValue()))
         );
 
-        return opt.map(UserEntityMapper::toCredentialsView);
+        return opt.map(mapper::toCredentialsView);
     }
 
     @Override
@@ -49,7 +51,7 @@ public class UserRepositoryAdapter implements UserRepositoryPort {
                 () -> log.debug("User not found id={}", id)
         );
 
-        return opt.map(UserEntityMapper::toCredentialsView);
+        return opt.map(mapper::toCredentialsView);
     }
 
     @Override

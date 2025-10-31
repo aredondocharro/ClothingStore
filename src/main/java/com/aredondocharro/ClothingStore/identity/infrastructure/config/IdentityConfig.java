@@ -12,6 +12,7 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserPersistenceAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserRepositoryAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.PasswordResetTokenRepositoryAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.UserMapper;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataRefreshSessionRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
@@ -37,19 +38,21 @@ public class IdentityConfig {
     // ========================================================================
 
     /**
-     * Adapter JPA que implementa LoadUserPort / SaveUserPort (dominio User)
+     * JPA adapter implementing LoadUserPort / SaveUserPort (domain User)
      */
     @Bean
-    public UserPersistenceAdapter userPersistenceAdapter(SpringDataUserRepository repo) {
-        return new UserPersistenceAdapter(repo);
+    public UserPersistenceAdapter userPersistenceAdapter(SpringDataUserRepository repo,
+                                                         UserMapper mapper) {
+        return new UserPersistenceAdapter(repo, mapper);
     }
 
     /**
-     * Adapter para UserRepositoryPort (UserView + updatePasswordHash)
+     * Adapter for UserRepositoryPort (CredentialsView + updatePasswordHash)
      */
     @Bean
-    public UserRepositoryPort userRepositoryPort(SpringDataUserRepository repo) {
-        return new UserRepositoryAdapter(repo);
+    public UserRepositoryPort userRepositoryPort(SpringDataUserRepository repo,
+                                                 UserMapper mapper) {
+        return new UserRepositoryAdapter(repo, mapper);
     }
 
     /**
