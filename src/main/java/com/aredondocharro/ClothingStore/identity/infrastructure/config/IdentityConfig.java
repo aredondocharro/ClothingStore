@@ -15,8 +15,8 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataRefreshSessionRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.NoopSessionManager;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.security.SimplePasswordPolicy;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.policy.NoopSessionManager;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.policy.SimplePasswordPolicy;
 import com.aredondocharro.ClothingStore.identity.infrastructure.tx.*;
 import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
 import org.springframework.beans.factory.annotation.Qualifier;

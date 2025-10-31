@@ -1,4 +1,4 @@
-package com.aredondocharro.ClothingStore.identity.infrastructure.out.security;
+package com.aredondocharro.ClothingStore.identity.infrastructure.out.policy;
 
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.SessionManagerPort;
