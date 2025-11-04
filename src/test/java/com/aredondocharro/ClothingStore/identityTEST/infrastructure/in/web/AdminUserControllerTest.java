@@ -9,16 +9,15 @@ import com.aredondocharro.ClothingStore.identity.domain.port.in.DeleteUserUseCas
 import com.aredondocharro.ClothingStore.identity.domain.port.in.UpdateUserRolesUseCase;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.AdminUserController;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.error.IdentityGlobalErrorHandler;
-import com.aredondocharro.ClothingStore.security.config.SecurityConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MvcResult;
@@ -46,14 +45,11 @@ class AdminUserControllerTest {
     @Autowired
     MockMvc mvc;
 
-    @MockBean DeleteUserUseCase deleteUC;
-    @MockBean UpdateUserRolesUseCase rolesUC;
+    @MockitoBean
+    DeleteUserUseCase deleteUC;
+    @MockitoBean UpdateUserRolesUseCase rolesUC;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    // ----------------------------
-    // DELETE /admin/users/{id}
-    // ----------------------------
 
     @Test
     @DisplayName("DELETE /admin/users/{id} -> 401 when unauthenticated")
@@ -97,10 +93,6 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.code").value("identity.user_not_found"));
     }
 
-    // ----------------------------
-    // PUT /admin/users/{id}/roles
-    // ----------------------------
-
     @Test
     @DisplayName("PUT /admin/users/{id}/roles -> 401 when unauthenticated")
     void setRoles_unauthenticated_401() throws Exception {
@@ -127,7 +119,7 @@ class AdminUserControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /admin/users/{id}/roles -> 204 when ADMIN and valid payload")
+    @DisplayName("PUT /admin/users/{id}/roles -> 202 when ADMIN and valid payload")
     void setRoles_admin_success_204() throws Exception {
         UUID id = UUID.randomUUID();
         String json = "{ \"roles\": [\"USER\", \"ADMIN\"] }";
@@ -138,7 +130,7 @@ class AdminUserControllerTest {
                         .with(user("admin").roles("ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isAccepted());
     }
 
     @Test

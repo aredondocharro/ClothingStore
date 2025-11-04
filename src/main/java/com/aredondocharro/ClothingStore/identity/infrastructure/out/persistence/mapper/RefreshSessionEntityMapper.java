@@ -3,35 +3,36 @@ package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence
 import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.RefreshSessionEntity;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
-public final class RefreshSessionEntityMapper {
-    private RefreshSessionEntityMapper() {}
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface RefreshSessionEntityMapper {
 
-    public static RefreshSession toDomain(RefreshSessionEntity e) {
-        if (e == null) return null;
-        return new RefreshSession(
-                e.getJti(),
-                UserId.of(e.getUserId()),
-                e.getExpiresAt(),
-                e.getCreatedAt(),
-                e.getRevokedAt(),
-                e.getReplacedByJti(),
-                e.getIp(),
-                e.getUserAgent()
-        );
-    }
+    // entity -> domain
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "jti",          source = "jti")
+    @Mapping(target = "userId",       expression = "java(UserId.of(e.getUserId()))")
+    @Mapping(target = "expiresAt",    source = "expiresAt")
+    @Mapping(target = "createdAt",    source = "createdAt")
+    @Mapping(target = "revokedAt",    source = "revokedAt")
+    @Mapping(target = "replacedByJti",source = "replacedByJti")
+    @Mapping(target = "ip",           source = "ip")
+    @Mapping(target = "userAgent",    source = "userAgent")
+    RefreshSession toDomain(RefreshSessionEntity e);
 
-    public static RefreshSessionEntity toEntity(RefreshSession s) {
-        if (s == null) return null;
-        return RefreshSessionEntity.builder()
-                .jti(s.jti())
-                .userId(s.userId().value())
-                .expiresAt(s.expiresAt())
-                .createdAt(s.createdAt())
-                .revokedAt(s.revokedAt())
-                .replacedByJti(s.replacedByJti())
-                .ip(s.ip())
-                .userAgent(s.userAgent())
-                .build();
-    }
+    // domain -> entity (tokenHash NO existe en domain → ignorarlo aquí)
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "jti",          source = "jti")
+    @Mapping(target = "userId",       expression = "java(s.userId().value())")
+    @Mapping(target = "expiresAt",    source = "expiresAt")
+    @Mapping(target = "createdAt",    source = "createdAt")
+    @Mapping(target = "revokedAt",    source = "revokedAt")
+    @Mapping(target = "replacedByJti",source = "replacedByJti")
+    @Mapping(target = "ip",           source = "ip")
+    @Mapping(target = "userAgent",    source = "userAgent")
+    @Mapping(target = "tokenHash",    ignore = true)
+    RefreshSessionEntity toEntity(RefreshSession s);
 }

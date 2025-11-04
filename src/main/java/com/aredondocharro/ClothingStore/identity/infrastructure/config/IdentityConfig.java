@@ -12,6 +12,8 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserPersistenceAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.UserRepositoryAdapter;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.PasswordResetTokenRepositoryAdapter;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.PasswordResetTokenMapper;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.RefreshSessionEntityMapper;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.UserMapper;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataRefreshSessionRepository;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataUserRepository;
@@ -59,8 +61,11 @@ public class IdentityConfig {
      * Adapter para PasswordResetTokenRepositoryPort (tokens de reset)
      */
     @Bean
-    public PasswordResetTokenRepositoryPort passwordResetTokenRepositoryPort(SpringPasswordResetTokenJpaRepository jpa) {
-        return new PasswordResetTokenRepositoryAdapter(jpa);
+    public PasswordResetTokenRepositoryPort passwordResetTokenRepositoryPort(
+            SpringPasswordResetTokenJpaRepository jpa,
+            PasswordResetTokenMapper mapper
+    ) {
+        return new PasswordResetTokenRepositoryAdapter(jpa, mapper);
     }
 
     /**
@@ -75,8 +80,9 @@ public class IdentityConfig {
      * Persistencia de sesiones/refresh tokens (JPA)
      */
     @Bean
-    public RefreshTokenStorePort refreshTokenStorePort(SpringDataRefreshSessionRepository repo) {
-        return new JpaRefreshTokenStoreAdapter(repo);
+    public RefreshTokenStorePort refreshTokenStorePort(SpringDataRefreshSessionRepository repo,
+                                                       RefreshSessionEntityMapper mapper) {
+        return new JpaRefreshTokenStoreAdapter(repo, mapper);
     }
 
     // ========================================================================

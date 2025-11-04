@@ -4,6 +4,7 @@ import com.aredondocharro.ClothingStore.identity.domain.model.RefreshSession;
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.RefreshTokenStorePort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.RefreshSessionEntity;
+import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.RefreshSessionEntityMapper;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringDataRefreshSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import java.util.Optional;
 public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
 
     private final SpringDataRefreshSessionRepository repo;
+    private final RefreshSessionEntityMapper mapper;
 
     @Override
     @Transactional(readOnly = true, propagation = Propagation.MANDATORY) // ← query
@@ -31,10 +33,10 @@ public class JpaRefreshTokenStoreAdapter implements RefreshTokenStorePort {
 
     @Override
     public RefreshSession saveNew(RefreshSession session, String rawRefreshToken) {
-        RefreshSessionEntity entity = toEntity(session);
-        entity.setTokenHash(sha256(rawRefreshToken)); // hex 64 chars
-        RefreshSessionEntity saved = repo.save(entity);
-        return toDomain(saved);
+        RefreshSessionEntity e = mapper.toEntity(session);
+        e.setTokenHash(sha256(rawRefreshToken));
+        RefreshSessionEntity saved = repo.save(e);
+        return mapper.toDomain(saved);
     }
 
     @Override

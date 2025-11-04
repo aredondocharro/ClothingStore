@@ -15,10 +15,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -44,16 +44,16 @@ class IdentityErrorHandlerTest {
     @Autowired MockMvc mvc;
 
     // ==== Mocks de TODOS los puertos usados por los controllers ====
-    @MockBean RegisterUserUseCase registerUC;
-    @MockBean LoginUseCase loginUC;
-    @MockBean VerifyEmailUseCase verifyUC;
-    @MockBean DeleteUserUseCase deleteUserUC;
-    @MockBean RequestPasswordResetUseCase requestResetUC;
-    @MockBean ResetPasswordUseCase resetPasswordUC;
-    @MockBean ChangePasswordUseCase changePasswordUC;
-    @MockBean RefreshAccessTokenUseCase refreshUC;
-    @MockBean LogoutUseCase logoutUC;
-    @MockBean RefreshCookieManager cookieManager;
+    @MockitoBean RegisterUserUseCase registerUC;
+    @MockitoBean LoginUseCase loginUC;
+    @MockitoBean VerifyEmailUseCase verifyUC;
+    @MockitoBean DeleteUserUseCase deleteUserUC;
+    @MockitoBean RequestPasswordResetUseCase requestResetUC;
+    @MockitoBean ResetPasswordUseCase resetPasswordUC;
+    @MockitoBean ChangePasswordUseCase changePasswordUC;
+    @MockitoBean RefreshAccessTokenUseCase refreshUC;
+    @MockitoBean LogoutUseCase logoutUC;
+    @MockitoBean RefreshCookieManager cookieManager;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

@@ -10,6 +10,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import com.aredondocharro.ClothingStore.testconfig.TestSecurityConfig;
 
@@ -28,8 +29,7 @@ class EmailMessageControllerTest {
     @Autowired
     MockMvc mvc;
 
-    @MockBean
-    SendEmailUseCase useCase;
+    @MockitoBean SendEmailUseCase useCase;
 
     @Test
     @DisplayName("returns 202 Accepted on valid request")

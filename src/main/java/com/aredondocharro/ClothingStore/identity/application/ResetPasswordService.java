@@ -1,12 +1,15 @@
 package com.aredondocharro.ClothingStore.identity.application;
 
-import com.aredondocharro.ClothingStore.identity.domain.port.out.error.PasswordResetTokenInvalidException;
+import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetToken;
+import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetTokenId;
+import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.ResetPasswordUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.SessionManagerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.error.PasswordResetTokenInvalidException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,7 +18,6 @@ import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -39,9 +41,9 @@ public class ResetPasswordService implements ResetPasswordUseCase {
         String hash = sha256(rawToken);
         log.debug("Password RESET computed hash={}", mask(hash, 8));
 
-        // 2) Buscar token válido (no usado, no expirado)
-        Optional<PasswordResetTokenRepositoryPort.Token> tokenOpt = tokens.findValidByHash(hash, now);
-        PasswordResetTokenRepositoryPort.Token token = tokenOpt.orElseThrow(PasswordResetTokenInvalidException::new);
+        // 2) Buscar token válido (no usado, no expirado) — ahora devuelve dominio
+        PasswordResetToken token = tokens.findValidByHash(hash, now)
+                .orElseThrow(PasswordResetTokenInvalidException::new);
         log.info("Password reset token accepted userId={} tokenId={}", token.userId(), token.id());
 
         // 3) Política de contraseña

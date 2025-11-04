@@ -1,34 +1,32 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper;
 
+import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetToken;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetTokenId;
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort.Token;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.PasswordResetTokenEntity;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
-public final class PasswordResetTokenMapper {
-    private PasswordResetTokenMapper() {}
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface PasswordResetTokenMapper {
 
-    public static PasswordResetTokenEntity toEntity(Token t) {
-        if (t == null) return null;
-        return PasswordResetTokenEntity.builder()
-                .id(t.id().value())
-                .userId(t.userId().value())
-                .tokenHash(t.tokenHash())
-                .expiresAt(t.expiresAt())
-                .usedAt(t.usedAt())
-                .createdAt(t.createdAt())
-                .build();
-    }
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "id",        expression = "java(PasswordResetTokenId.of(e.getId()))")
+    @Mapping(target = "userId",    expression = "java(UserId.of(e.getUserId()))")
+    @Mapping(target = "tokenHash", source = "tokenHash")
+    @Mapping(target = "expiresAt", source = "expiresAt")
+    @Mapping(target = "usedAt",    source = "usedAt")
+    @Mapping(target = "createdAt", source = "createdAt")
+    PasswordResetToken toDomain(PasswordResetTokenEntity e);
 
-    public static Token toToken(PasswordResetTokenEntity e) {
-        if (e == null) return null;
-        return new Token(
-                PasswordResetTokenId.of(e.getId()),
-                UserId.of(e.getUserId()),
-                e.getTokenHash(),
-                e.getExpiresAt(),
-                e.getUsedAt(),
-                e.getCreatedAt()
-        );
-    }
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "id",        expression = "java(t.id().value())")
+    @Mapping(target = "userId",    expression = "java(t.userId().value())")
+    @Mapping(target = "tokenHash", source = "tokenHash")
+    @Mapping(target = "expiresAt", source = "expiresAt")
+    @Mapping(target = "usedAt",    source = "usedAt")
+    @Mapping(target = "createdAt", source = "createdAt")
+    PasswordResetTokenEntity toEntity(PasswordResetToken t);
 }

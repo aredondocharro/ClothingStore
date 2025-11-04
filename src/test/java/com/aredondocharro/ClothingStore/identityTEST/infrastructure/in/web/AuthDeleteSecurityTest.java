@@ -13,8 +13,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
@@ -32,11 +32,11 @@ class AuthDeleteSecurityTest {
 
     @Autowired MockMvc mvc;
 
-    @MockBean RegisterUserUseCase registerUC;
-    @MockBean LoginUseCase loginUC;
-    @MockBean VerifyEmailUseCase verifyUC;
-    @MockBean DeleteUserUseCase deleteUC;
-    @MockBean RefreshCookieManager cookieManager;
+    @MockitoBean RegisterUserUseCase registerUC;
+    @MockitoBean LoginUseCase loginUC;
+    @MockitoBean VerifyEmailUseCase verifyUC;
+    @MockitoBean DeleteUserUseCase deleteUC;
+    @MockitoBean RefreshCookieManager cookieManager;
 
     @Test
     void delete_requires_authentication_returns401() throws Exception {

@@ -10,13 +10,12 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.error.Ide
 import jakarta.servlet.http.Cookie;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import com.aredondocharro.ClothingStore.testconfig.TestSecurityConfig;
 
@@ -37,14 +36,11 @@ class RefreshControllerTest {
     @Autowired
     MockMvc mvc;
 
-    @MockBean
-    RefreshAccessTokenUseCase refreshUC;
+    @MockitoBean RefreshAccessTokenUseCase refreshUC;
 
-    @MockBean
-    LogoutUseCase logoutUC;
+    @MockitoBean LogoutUseCase logoutUC;
 
-    @MockBean
-    RefreshCookieManager cookieManager;
+    @MockitoBean RefreshCookieManager cookieManager;
 
     @Test
     void refresh_returnsNewAccess_andSetsRotatedRefreshCookie() throws Exception {

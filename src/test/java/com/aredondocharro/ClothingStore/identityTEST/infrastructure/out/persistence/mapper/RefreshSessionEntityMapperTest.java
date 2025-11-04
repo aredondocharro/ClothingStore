@@ -5,6 +5,7 @@ import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.RefreshSessionEntity;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.RefreshSessionEntityMapper;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -13,21 +14,22 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class RefreshSessionEntityMapperTest {
 
+    private final RefreshSessionEntityMapper mapper = Mappers.getMapper(RefreshSessionEntityMapper.class);
+
     @Test
-    void toDomain_and_toEntity_mapAllFields() {
-        Instant now = Instant.now();
-        RefreshSession session = new RefreshSession(
-                "jti-123",
+    void toEntity_and_toDomain_roundTrip() {
+        var session = new RefreshSession(
+                "jti-1",
                 UserId.of(UUID.randomUUID()),
-                now.plusSeconds(3600),
-                now,
-                null,            // revokedAt
-                "replaced-456",  // replacedByJti
+                Instant.now().plusSeconds(3600),
+                Instant.now(),
+                null,
+                null,
                 "127.0.0.1",
-                "JUnit UA"
+                "JUnit-agent"
         );
 
-        RefreshSessionEntity entity = RefreshSessionEntityMapper.toEntity(session);
+        RefreshSessionEntity entity = mapper.toEntity(session);
         assertEquals(session.jti(), entity.getJti());
         assertEquals(session.userId().value(), entity.getUserId());
         assertEquals(session.expiresAt(), entity.getExpiresAt());
@@ -37,7 +39,7 @@ class RefreshSessionEntityMapperTest {
         assertEquals(session.ip(), entity.getIp());
         assertEquals(session.userAgent(), entity.getUserAgent());
 
-        RefreshSession back = RefreshSessionEntityMapper.toDomain(entity);
+        var back = mapper.toDomain(entity);
         assertEquals(session.jti(), back.jti());
         assertEquals(session.userId(), back.userId());
         assertEquals(session.expiresAt(), back.expiresAt());

@@ -182,7 +182,7 @@ public class AuthController {
     public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal AuthPrincipal auth) {
         UserId userId = UserId.of(UUID.fromString(auth.userId()));
         deleteUserUC.delete(userId);
-        return ResponseEntity.noContent().build(); // 204, sin body
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(

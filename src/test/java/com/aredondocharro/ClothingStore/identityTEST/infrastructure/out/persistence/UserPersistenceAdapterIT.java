@@ -1,4 +1,4 @@
-package com.aredondocharro.ClothingStore.identityTEST.integration.out.persistence;
+package com.aredondocharro.ClothingStore.identityTEST.infrastructure.out.persistence;
 
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.UserMapper;
 import com.aredondocharro.ClothingStore.testconfig.TestcontainersConfiguration;

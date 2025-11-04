@@ -20,6 +20,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.NullSecurityContextRepository;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
@@ -37,7 +38,7 @@ class AccessTokenFilterWebSliceTest {
 
     @Autowired MockMvc mvc;
 
-    @MockBean AccessTokenVerifierPort verifier; // el filtro usará este mock
+    @MockitoBean AccessTokenVerifierPort verifier;
 
     @TestConfiguration
     static class SecurityTestConfig {

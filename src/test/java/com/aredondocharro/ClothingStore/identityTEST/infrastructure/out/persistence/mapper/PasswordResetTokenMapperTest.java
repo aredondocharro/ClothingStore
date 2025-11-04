@@ -1,11 +1,12 @@
 package com.aredondocharro.ClothingStore.identityTEST.infrastructure.out.persistence.mapper;
 
+import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetToken;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetTokenId;
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.PasswordResetTokenEntity;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.PasswordResetTokenMapper;
 import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -14,19 +15,21 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PasswordResetTokenMapperTest {
 
-    @Test
-    void toEntity_and_toToken_roundTrip() {
-        PasswordResetTokenRepositoryPort.Token token =
-                new PasswordResetTokenRepositoryPort.Token(
-                        PasswordResetTokenId.of(UUID.randomUUID()),
-                        UserId.of(UUID.randomUUID()),
-                        "sha256hexhash",
-                        Instant.now().plusSeconds(900),
-                        null, // usedAt
-                        Instant.now()
-                );
+    private final PasswordResetTokenMapper mapper = Mappers.getMapper(PasswordResetTokenMapper.class);
 
-        PasswordResetTokenEntity e = PasswordResetTokenMapper.toEntity(token);
+    @Test
+    void toEntity_and_toDomain_roundTrip() {
+        var token = new PasswordResetToken(
+                PasswordResetTokenId.of(UUID.randomUUID()),
+                UserId.of(UUID.randomUUID()),
+                "hash-abc",
+                Instant.now().plusSeconds(3600),
+                null,
+                Instant.now()
+        );
+
+        // domain -> entity
+        PasswordResetTokenEntity e = mapper.toEntity(token);
         assertEquals(token.id().value(), e.getId());
         assertEquals(token.userId().value(), e.getUserId());
         assertEquals(token.tokenHash(), e.getTokenHash());
@@ -34,7 +37,8 @@ class PasswordResetTokenMapperTest {
         assertEquals(token.usedAt(), e.getUsedAt());
         assertEquals(token.createdAt(), e.getCreatedAt());
 
-        PasswordResetTokenRepositoryPort.Token back = PasswordResetTokenMapper.toToken(e);
+        // entity -> domain
+        PasswordResetToken back = mapper.toDomain(e);
         assertEquals(token.id(), back.id());
         assertEquals(token.userId(), back.userId());
         assertEquals(token.tokenHash(), back.tokenHash());

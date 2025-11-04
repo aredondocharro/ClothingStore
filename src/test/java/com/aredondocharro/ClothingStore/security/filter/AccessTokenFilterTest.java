@@ -5,6 +5,7 @@ import com.aredondocharro.ClothingStore.security.port.AuthPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
@@ -21,6 +22,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class AccessTokenFilterTest {
+
+    @BeforeEach
+    void init() {
+        SecurityContextHolder.clearContext();
+    }
 
     @AfterEach
     void cleanup() {
@@ -47,11 +53,11 @@ class AccessTokenFilterTest {
 
         when(verifier.verify("valid.jwt.token")).thenReturn(principal);
 
-        filter.doFilterInternal(req, res, chain);
+        // Usa el ciclo real del filtro (no llames a doFilterInternal directamente)
+        filter.doFilter(req, res, chain);
 
         assertNotNull(SecurityContextHolder.getContext().getAuthentication(), "Authentication should be set");
         assertTrue(SecurityContextHolder.getContext().getAuthentication().isAuthenticated());
-
         assertEquals(userId, SecurityContextHolder.getContext().getAuthentication().getName());
 
         assertInstanceOf(AuthPrincipal.class, SecurityContextHolder.getContext().getAuthentication().getPrincipal());
@@ -72,7 +78,7 @@ class AccessTokenFilterTest {
         MockHttpServletResponse res1 = new MockHttpServletResponse();
         FilterChain chain1 = new MockFilterChain();
 
-        filter.doFilterInternal(req1, res1, chain1);
+        filter.doFilter(req1, res1, chain1);
         assertNull(SecurityContextHolder.getContext().getAuthentication());
 
         // ---- Case 2: invalid token ----
@@ -83,8 +89,8 @@ class AccessTokenFilterTest {
         MockHttpServletResponse res2 = new MockHttpServletResponse();
         FilterChain chain2 = new MockFilterChain();
 
-        when(verifier.verify("bad.token")).thenReturn(null); // or thenThrow(...)
-        filter.doFilterInternal(req2, res2, chain2);
+        when(verifier.verify("bad.token")).thenReturn(null); // o thenThrow(...)
+        filter.doFilter(req2, res2, chain2);
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 }

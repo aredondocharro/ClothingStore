@@ -2,6 +2,7 @@ package com.aredondocharro.ClothingStore.identity.application;
 
 import com.aredondocharro.ClothingStore.identity.contracts.event.PasswordResetEmailRequested;
 import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
+import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetToken;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetTokenId;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.RequestPasswordResetUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
@@ -21,29 +22,27 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Optional;
 
-
 @Slf4j
 @RequiredArgsConstructor
 public class RequestPasswordResetService implements RequestPasswordResetUseCase {
 
     private final UserRepositoryPort users;
     private final PasswordResetTokenRepositoryPort tokens;
-    private final EventBusPort eventBus;     // ← ya no MailerPort (Notification enviará el email)
+    private final EventBusPort eventBus;     // Notification enviará el email
     private final String resetBaseUrl;
     private final Clock clock;
-    private final Duration ttl;              // ← configurable (p.ej. PT30M)
+    private final Duration ttl;
 
     private static final SecureRandom RNG = new SecureRandom();
     private static final int TOKEN_BYTES = 32; // ~256 bits
 
-
     @Override
     public void requestReset(IdentityEmail email) {
-        log.debug("[FORGOT] request for {}",LogSanitizer.maskEmail(email.getValue()));
+        log.debug("[FORGOT] request for {}", LogSanitizer.maskEmail(email.getValue()));
 
         Optional<CredentialsView> userOpt = users.findByEmail(email);
-
         if (userOpt.isEmpty()) {
+            // Anti-enumeration: comportamiento indistinguible
             log.info("[FORGOT] email not found (anti-enumeration): {}", LogSanitizer.maskEmail(email.getValue()));
             return;
         }
@@ -51,19 +50,30 @@ public class RequestPasswordResetService implements RequestPasswordResetUseCase 
         CredentialsView user = userOpt.get();
         log.debug("[FORGOT] user found id={} email={}", user.id(), LogSanitizer.maskEmail(user.email().getValue()));
 
-
+        // 1) Invalida tokens anteriores del usuario
         tokens.deleteAllForUser(user.id());
+
+        // 2) Genera token raw (URL-safe) y calcula su hash (Base64 estándar) para almacenar
         String rawToken = generateUrlSafeToken(TOKEN_BYTES);
 
-        //MUY IMPORTANTE: BORRAR ESTO ANTES DE PRODUCCIÓN -SOLO PARA TESTING Y DEBUGGING-
+        // ⚠️ SOLO PARA DEBUG LOCAL (elimínalo en prod)
         log.warn("[TMP] RESET TOKEN => {}", rawToken);
 
         String tokenHash = sha256(rawToken);
         Instant now = Instant.now(clock);
         Instant expires = now.plus(ttl);
-        tokens.save(new PasswordResetTokenRepositoryPort.Token(
-                PasswordResetTokenId.newId(), user.id(), tokenHash, expires, null, now
+
+        // 3) Persiste el token de dominio
+        tokens.save(new PasswordResetToken(
+                PasswordResetTokenId.newId(),
+                user.id(),
+                tokenHash,
+                expires,
+                null,
+                now
         ));
+
+        // 4) Publica el evento con el enlace
         String link = resetBaseUrl + "?token=" + rawToken;
         eventBus.publish(new PasswordResetEmailRequested(user.email().getValue(), link, now));
         log.info("[FORGOT] published PasswordResetEmailRequested to {}", LogSanitizer.maskEmail(user.email().getValue()));
@@ -77,6 +87,7 @@ public class RequestPasswordResetService implements RequestPasswordResetUseCase 
         return Base64.getUrlEncoder().withoutPadding().encodeToString(buf);
     }
 
+    /** SHA-256 → Base64 estándar (no URL-safe), debe coincidir con el adapter/repositorio. */
     private static String sha256(String input) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");

@@ -2,7 +2,6 @@ package com.aredondocharro.ClothingStore.identityTEST.infrastructure.in.events;
 
 import com.aredondocharro.ClothingStore.identity.application.PublishVerificationEmailOnUserRegisteredService;
 import com.aredondocharro.ClothingStore.identity.contracts.event.UserRegistered;
-import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.events.OnUserRegisteredListener;
 import org.junit.jupiter.api.Test;

@@ -5,6 +5,7 @@ import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.DeleteUserUseCase;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.UpdateUserRolesUseCase;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.AdminSetRolesRequest;
+import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.MessageResponse;
 import com.aredondocharro.ClothingStore.shared.web.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -158,7 +159,7 @@ public class AdminUserController {
     })
     @PutMapping(path = "/{id}/roles", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> setRoles(@PathVariable UUID id,
+    public ResponseEntity<MessageResponse> setRoles(@PathVariable UUID id,
                                          @Valid @org.springframework.web.bind.annotation.RequestBody AdminSetRolesRequest body) {
         Set<Role> roles;
         try {
@@ -168,8 +169,10 @@ public class AdminUserController {
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid role value");
         }
-
+        log.info("ADMIN | Change Role request | userId={} | Role ={}", id, roles);
         rolesUC.setRoles(UserId.of(id), roles);
-        return ResponseEntity.noContent().build();
+        log.info("ADMIN | Change Role success | userId={} | Role ={}", id, roles);
+        return ResponseEntity.accepted()
+                .body(new MessageResponse("User " +id +" has role: "+roles));
     }
 }

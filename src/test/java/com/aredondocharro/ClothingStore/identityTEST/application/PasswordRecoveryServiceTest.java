@@ -5,17 +5,14 @@ import com.aredondocharro.ClothingStore.identity.application.RequestPasswordRese
 import com.aredondocharro.ClothingStore.identity.application.ResetPasswordService;
 import com.aredondocharro.ClothingStore.identity.contracts.event.PasswordResetEmailRequested;
 import com.aredondocharro.ClothingStore.identity.domain.exception.NewPasswordSameAsOldException;
-import com.aredondocharro.ClothingStore.identity.domain.port.out.error.PasswordResetTokenInvalidException;
-import com.aredondocharro.ClothingStore.identity.domain.exception.InvalidPasswordException; // ⬅️ NUEVO
-import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail;
-import com.aredondocharro.ClothingStore.identity.domain.model.PasswordHash;
-import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetTokenId;
-import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
+import com.aredondocharro.ClothingStore.identity.domain.exception.InvalidPasswordException;
+import com.aredondocharro.ClothingStore.identity.domain.model.*;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordHasherPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordPolicyPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.SessionManagerPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.UserRepositoryPort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.error.PasswordResetTokenInvalidException;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.view.CredentialsView;
 import com.aredondocharro.ClothingStore.shared.domain.event.EventBusPort;
 import org.junit.jupiter.api.*;
@@ -45,7 +42,6 @@ class PasswordRecoveryServiceTest {
     @Mock private PasswordHasherPort passwordHasher;
     @Mock private EventBusPort eventBus;
 
-    // Servicios
     private RequestPasswordResetService requestPasswordResetService;
     private ResetPasswordService resetPasswordService;
     private ChangePasswordService changePasswordService;
@@ -53,7 +49,6 @@ class PasswordRecoveryServiceTest {
     private static final String TEST_BASE_URL = "https://app.example/reset-password";
     private static final BCryptPasswordEncoder BCRYPT = new BCryptPasswordEncoder(10);
 
-    // Tiempo fijo y TTL
     private static final Instant FIXED_NOW = Instant.parse("2025-10-14T12:00:00Z");
     private static final Clock FIXED_CLOCK = Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
     private static final Duration TTL = Duration.ofMinutes(30);
@@ -84,15 +79,15 @@ class PasswordRecoveryServiceTest {
 
             when(users.findByEmail(email)).thenReturn(Optional.of(cw));
 
-            ArgumentCaptor<PasswordResetTokenRepositoryPort.Token> tokenCap =
-                    ArgumentCaptor.forClass(PasswordResetTokenRepositoryPort.Token.class);
+            ArgumentCaptor<PasswordResetToken> tokenCap =
+                    ArgumentCaptor.forClass(PasswordResetToken.class);
             ArgumentCaptor<PasswordResetEmailRequested> evtCap =
                     ArgumentCaptor.forClass(PasswordResetEmailRequested.class);
 
             requestPasswordResetService.requestReset(email);
 
             InOrder inOrder = inOrder(tokens, eventBus);
-            inOrder.verify(tokens).deleteAllForUser(eq(userId));
+            inOrder.verify(tokens).deleteAllForUser(userId);
             inOrder.verify(tokens).save(tokenCap.capture());
             inOrder.verify(eventBus).publish(evtCap.capture());
 
@@ -103,7 +98,7 @@ class PasswordRecoveryServiceTest {
             String rawToken = evt.url().substring((TEST_BASE_URL + "?token=").length());
             assertFalse(rawToken.isBlank());
 
-            PasswordResetTokenRepositoryPort.Token saved = tokenCap.getValue();
+            PasswordResetToken saved = tokenCap.getValue();
             assertNotNull(saved.id());
             assertEquals(userId, saved.userId());
             assertNull(saved.usedAt());
@@ -137,15 +132,14 @@ class PasswordRecoveryServiceTest {
 
             String hashedNew = BCRYPT.encode(newPassword);
 
-            PasswordResetTokenRepositoryPort.Token token =
-                    new PasswordResetTokenRepositoryPort.Token(
-                            PasswordResetTokenId.newId(),
-                            userId,
-                            "HASHED_TOKEN",
-                            FIXED_NOW.plus(30, ChronoUnit.MINUTES),
-                            null,
-                            FIXED_NOW
-                    );
+            PasswordResetToken token = new PasswordResetToken(
+                    PasswordResetTokenId.newId(),
+                    userId,
+                    "HASHED_TOKEN",
+                    FIXED_NOW.plus(30, ChronoUnit.MINUTES),
+                    null,
+                    FIXED_NOW
+            );
 
             when(tokens.findValidByHash(anyString(), any(Instant.class)))
                     .thenReturn(Optional.of(token));
@@ -155,7 +149,7 @@ class PasswordRecoveryServiceTest {
 
             verify(passwordPolicy).validate(eq(newPassword));
             InOrder inOrder = inOrder(users, tokens, sessions);
-            inOrder.verify(users).updatePasswordHash(eq(userId), eq(hashedNew));
+            inOrder.verify(users).updatePasswordHash((userId), (hashedNew));
             inOrder.verify(tokens).markUsed(eq(token.id()), eq(FIXED_NOW));
             inOrder.verify(sessions).revokeAllSessions(eq(userId));
         }
@@ -216,7 +210,6 @@ class PasswordRecoveryServiceTest {
             when(users.findById(userId)).thenReturn(Optional.of(userView));
             when(passwordHasher.matches(current, storedHash.getValue())).thenReturn(false);
 
-            // ⬇️ Aquí el cambio clave: esperamos InvalidPasswordException
             assertThrows(InvalidPasswordException.class,
                     () -> changePasswordService.change(userId, current, next));
 

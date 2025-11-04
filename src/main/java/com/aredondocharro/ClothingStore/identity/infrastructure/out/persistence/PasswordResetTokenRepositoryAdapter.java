@@ -1,9 +1,9 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence;
 
+import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetToken;
 import com.aredondocharro.ClothingStore.identity.domain.model.PasswordResetTokenId;
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.PasswordResetTokenRepositoryPort;
-import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.PasswordResetTokenEntity;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.mapper.PasswordResetTokenMapper;
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo.SpringPasswordResetTokenJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,29 +16,21 @@ import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
-@Transactional(propagation = Propagation.MANDATORY) // exige TX abierta por el wrapper
+@Transactional(propagation = Propagation.MANDATORY)
 public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRepositoryPort {
 
     private final SpringPasswordResetTokenJpaRepository jpa;
+    private final PasswordResetTokenMapper mapper;
 
     @Override
-    public void save(Token token) {
-        PasswordResetTokenEntity e = PasswordResetTokenMapper.toEntity(token);
-        jpa.save(e);
+    public void save(PasswordResetToken token) {
+        jpa.save(mapper.toEntity(token));
     }
 
     @Override
-    @Transactional(readOnly = true, propagation = Propagation.MANDATORY) // consulta
-    public Optional<Token> findValidByHash(String tokenHash, Instant now) {
+    public Optional<PasswordResetToken> findValidByHash(String tokenHash, Instant now) {
         return jpa.findByTokenHashAndExpiresAtAfterAndUsedAtIsNull(tokenHash, now)
-                .map(e -> new Token(
-                        PasswordResetTokenId.of(e.getId()),
-                        UserId.of(e.getUserId()),
-                        e.getTokenHash(),
-                        e.getExpiresAt(),
-                        e.getUsedAt(),
-                        e.getCreatedAt()
-                ));
+                .map(mapper::toDomain);
     }
 
     @Override
@@ -53,3 +45,4 @@ public class PasswordResetTokenRepositoryAdapter implements PasswordResetTokenRe
         jpa.deleteAllByUserId(userId.value());
     }
 }
+
