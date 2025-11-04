@@ -240,7 +240,7 @@ public class AuthController {
     @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req,
                                               HttpServletResponse res) {
-        final IdentityEmail emailVO = IdentityEmail.of(req.email()); // convertir String -> VO (ajusta si tu DTO usa getters)
+        final IdentityEmail emailVO = IdentityEmail.of(req.email());
         log.debug("POST /auth/login email={}", emailVO.getValue());
 
         AuthResult result = loginUC.login(emailVO, req.password());

@@ -160,19 +160,12 @@ public class AdminUserController {
     @PutMapping(path = "/{id}/roles", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MessageResponse> setRoles(@PathVariable UUID id,
-                                         @Valid @org.springframework.web.bind.annotation.RequestBody AdminSetRolesRequest body) {
-        Set<Role> roles;
-        try {
-            roles = body.roles().stream()
-                    .map(s -> Role.valueOf(s.toUpperCase(Locale.ROOT)))
-                    .collect(Collectors.toSet());
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid role value");
-        }
-        log.info("ADMIN | Change Role request | userId={} | Role ={}", id, roles);
-        rolesUC.setRoles(UserId.of(id), roles);
-        log.info("ADMIN | Change Role success | userId={} | Role ={}", id, roles);
+                                                    @Valid @RequestBody AdminSetRolesRequest body) {
+
+        log.info("ADMIN | Change Role request | userId={} | roles={}", id, body.roles());
+        rolesUC.setRoles(UserId.of(id), body.roles());
+        log.info("ADMIN | Change Role success | userId={} | roles={}", id, body.roles());
         return ResponseEntity.accepted()
-                .body(new MessageResponse("User " +id +" has role: "+roles));
+                .body(new MessageResponse("User " + id + " has role: " + body.roles()));
     }
 }
