@@ -27,6 +27,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,7 +42,7 @@ import static org.mockito.Mockito.verify;
 @EnableJpaRepositories(basePackageClasses = EmailOutboxRepository.class)
 @Import({OutboxEmailDispatcher.class, OutboxEmailDispatcherTest.LocalProps.class})
 @TestPropertySource(properties = {
-        // DB y JPA
+        // DB y JPA (usamos DDL de Hibernate para este test de dispatcher)
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.flyway.enabled=false",
 
@@ -51,7 +52,7 @@ import static org.mockito.Mockito.verify;
         // Propiedades mínimas para el envío
         "app.mail.from=no-reply@test.local",
 
-        // Config del outbox (ajusta nombres si tu POJO usa otros)
+        // Config del outbox
         "app.mail.outbox.max-attempts=1",
         "app.mail.outbox.batch-size=50",
         "app.mail.outbox.base-delay=PT0S",
@@ -91,6 +92,7 @@ class OutboxEmailDispatcherTest {
                 .html(false) // fuerza rama SimpleMailMessage
                 .status(EmailOutboxEntity.Status.PENDING)
                 .nextAttemptAt(Instant.now().minusSeconds(1))
+                .messageKey("test-" + UUID.randomUUID()) // <-- clave requerida
                 .build();
         e = repo.saveAndFlush(e);
 
@@ -123,6 +125,7 @@ class OutboxEmailDispatcherTest {
                 .html(false)
                 .status(EmailOutboxEntity.Status.PENDING)
                 .nextAttemptAt(Instant.now().minusSeconds(1))
+                .messageKey("test-" + UUID.randomUUID()) // <-- clave requerida
                 .build();
         e = repo.saveAndFlush(e);
 

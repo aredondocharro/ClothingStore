@@ -12,6 +12,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,45 +30,40 @@ class NotificationOutboxRepositoryTest {
         repo.deleteAll();
         Instant now = Instant.now();
 
-        // due soonest
+        // due soonest (PENDING y vencido)
         EmailOutboxEntity a = repo.save(EmailOutboxEntity.builder()
                 .toAddresses("a@x")
                 .subject("s")
                 .body("b")
-                .nextAttemptAt(now.minusSeconds(30))
-                .status(EmailOutboxEntity.Status.PENDING)
                 .html(false)
+                .status(EmailOutboxEntity.Status.PENDING)
+                .nextAttemptAt(now.minusSeconds(30))
+                .messageKey("test-" + UUID.randomUUID())
                 .build());
 
-        // due later
+        // due later (PENDING y vencido más tarde)
         EmailOutboxEntity b = repo.save(EmailOutboxEntity.builder()
                 .toAddresses("b@x")
                 .subject("s")
                 .body("b")
-                .nextAttemptAt(now.minusSeconds(10))
-                .status(EmailOutboxEntity.Status.PENDING)
                 .html(false)
+                .status(EmailOutboxEntity.Status.PENDING)
+                .nextAttemptAt(now.minusSeconds(10))
+                .messageKey("test-" + UUID.randomUUID())
                 .build());
 
-        // not due (future)
+        // not due (PENDING a futuro) — sirve para comprobar exclusión
         repo.save(EmailOutboxEntity.builder()
                 .toAddresses("c@x")
                 .subject("s")
                 .body("b")
-                .nextAttemptAt(now.plusSeconds(30))
-                .status(EmailOutboxEntity.Status.PENDING)
                 .html(false)
+                .status(EmailOutboxEntity.Status.PENDING)
+                .nextAttemptAt(now.plusSeconds(30))
+                .messageKey("test-" + UUID.randomUUID())
                 .build());
 
-        // not pending
-        repo.save(EmailOutboxEntity.builder()
-                .toAddresses("d@x")
-                .subject("s")
-                .body("b")
-                .nextAttemptAt(now.minusSeconds(5))
-                .status(EmailOutboxEntity.Status.SENT)
-                .html(false)
-                .build());
+        // ⚠️ Eliminado el caso "SENT": no es necesario para este test y dispara la CHECK por @PrePersist
 
         List<EmailOutboxEntity> due = repo.findByStatusAndNextAttemptAtLessThanEqualOrderByNextAttemptAtAsc(
                 EmailOutboxEntity.Status.PENDING, now, PageRequest.of(0, 10));

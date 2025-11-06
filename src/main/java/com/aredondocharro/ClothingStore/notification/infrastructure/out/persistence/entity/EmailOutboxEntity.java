@@ -22,43 +22,36 @@ public class EmailOutboxEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-
     @Column(name = "to_addresses", nullable = false, columnDefinition = "TEXT")
     private String toAddresses; // comma-separated
-
 
     @Column(name = "subject", nullable = false, columnDefinition = "TEXT")
     private String subject;
 
-
     @Column(name = "body", nullable = false, columnDefinition = "TEXT")
     private String body;
 
-
     @Column(name = "is_html", nullable = false)
     private boolean html = true;
-
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private Status status = Status.PENDING;
 
-
     @Column(name = "attempt_count", nullable = false)
     private int attemptCount = 0;
-
 
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
-
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
-
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "message_key", length = 128, nullable = false, updatable = false)
+    private String messageKey;
 
     @Column(name = "last_attempt_at")
     private Instant lastAttemptAt;
