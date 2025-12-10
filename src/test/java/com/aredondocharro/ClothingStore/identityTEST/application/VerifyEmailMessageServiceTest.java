@@ -9,6 +9,7 @@ import com.aredondocharro.ClothingStore.identity.domain.port.out.RefreshTokenVer
 import com.aredondocharro.ClothingStore.identity.domain.port.out.SaveUserPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.TokenGeneratorPort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.VerificationTokenPort;
+import com.aredondocharro.ClothingStore.identity.domain.port.out.VerificationTokenStorePort;
 import com.aredondocharro.ClothingStore.identity.domain.port.out.error.VerificationTokenInvalidException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ import static org.mockito.Mockito.*;
 class VerifyEmailMessageServiceTest {
 
     @Mock VerificationTokenPort verifier;
+    @Mock VerificationTokenStorePort verificationTokenStore;
     @Mock LoadUserPort loadUserPort;
     @Mock SaveUserPort saveUserPort;
     @Mock TokenGeneratorPort tokens;
@@ -53,14 +55,19 @@ class VerifyEmailMessageServiceTest {
         Clock fixedClock = Clock.fixed(fixedNow, ZoneOffset.UTC);
 
         service = new VerifyEmailService(
-                verifier, loadUserPort, saveUserPort, tokens, refreshStore, refreshVerifier, fixedClock
+                verifier, verificationTokenStore, loadUserPort, saveUserPort,
+                tokens, refreshStore, refreshVerifier, fixedClock
         );
     }
 
     @Test
     void verify_success_marksVerified_generatesTokens_andPersistsRefreshSession() {
         UserId userId = UserId.newId();
-        when(verifier.validateAndExtractUserId("tok")).thenReturn(userId.value());
+        UUID verificationJti = UUID.randomUUID();
+        var tokenData = new VerificationTokenPort.VerificationTokenData(userId.value(), verificationJti);
+
+        when(verifier.validate("tok")).thenReturn(tokenData);
+        when(verificationTokenStore.isTokenActive(verificationJti)).thenReturn(true);
 
         User notVerified = new User(
                 userId,
@@ -98,10 +105,13 @@ class VerifyEmailMessageServiceTest {
         assertNull(saved.replacedByJti());
 
         // Orden principal
-        InOrder io = inOrder(verifier, loadUserPort, saveUserPort, tokens, refreshVerifier, refreshStore);
-        io.verify(verifier).validateAndExtractUserId("tok");
+        InOrder io = inOrder(verifier, verificationTokenStore, loadUserPort, saveUserPort,
+                tokens, refreshVerifier, refreshStore);
+        io.verify(verifier).validate("tok");
+        io.verify(verificationTokenStore).isTokenActive(verificationJti);
         io.verify(loadUserPort).findById(userId);
         io.verify(saveUserPort).save(argThat(u -> u.id().equals(userId) && u.emailVerified()));
+        io.verify(verificationTokenStore).revokeToken(verificationJti, fixedNow);
         io.verify(tokens).generateAccessToken(argThat(User::emailVerified));
         io.verify(tokens).generateRefreshToken(argThat(User::emailVerified));
         io.verify(refreshVerifier).verify("refresh.jwt");
@@ -112,7 +122,11 @@ class VerifyEmailMessageServiceTest {
     @Test
     void verify_alreadyVerified_generatesTokens_andPersistsRefreshSession_withoutSavingUser() {
         UserId userId = UserId.of(UUID.randomUUID());
-        when(verifier.validateAndExtractUserId("tok")).thenReturn(userId.value());
+        UUID verificationJti = UUID.randomUUID();
+        var tokenData = new VerificationTokenPort.VerificationTokenData(userId.value(), verificationJti);
+
+        when(verifier.validate("tok")).thenReturn(tokenData);
+        when(verificationTokenStore.isTokenActive(verificationJti)).thenReturn(true);
 
         User already = new User(
                 userId,
@@ -146,16 +160,24 @@ class VerifyEmailMessageServiceTest {
         assertEquals("jti-xyz", saved.jti());
         assertEquals(userId, saved.userId());
         assertEquals(exp, saved.expiresAt());
+
+        // el token de verificación se revoca igualmente
+        verify(verificationTokenStore).revokeToken(verificationJti, fixedNow);
     }
 
     @Test
     void verify_userNotFound_throwsVerificationTokenInvalid_andDoesNotGenerateTokensNorPersist() {
         UUID uuid = UUID.randomUUID();
-        when(verifier.validateAndExtractUserId("bad")).thenReturn(uuid);
+        UUID verificationJti = UUID.randomUUID();
+        var tokenData = new VerificationTokenPort.VerificationTokenData(uuid, verificationJti);
+
+        when(verifier.validate("bad")).thenReturn(tokenData);
+        when(verificationTokenStore.isTokenActive(verificationJti)).thenReturn(true);
         when(loadUserPort.findById(UserId.of(uuid))).thenReturn(Optional.empty());
 
         assertThrows(VerificationTokenInvalidException.class, () -> service.verify("bad"));
 
         verifyNoInteractions(saveUserPort, tokens, refreshVerifier, refreshStore);
+        verify(verificationTokenStore, never()).revokeToken(any(), any());
     }
 }

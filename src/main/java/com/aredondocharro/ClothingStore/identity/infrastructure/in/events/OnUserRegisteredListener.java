@@ -15,7 +15,7 @@ public class OnUserRegisteredListener {
 
     private final PublishVerificationEmailOnUserRegisteredService handler;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(UserRegistered e) {
         // We keep logs generic to avoid leaking PII (like email) in logs
         String eventType = e != null ? e.getClass().getSimpleName() : "UserRegistered";

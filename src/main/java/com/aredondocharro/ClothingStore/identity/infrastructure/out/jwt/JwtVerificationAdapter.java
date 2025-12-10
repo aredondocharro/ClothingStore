@@ -22,11 +22,19 @@ public class JwtVerificationAdapter implements VerificationTokenPort {
     }
 
     @Override
-    public UUID validateAndExtractUserId(String verificationToken) {
+    public VerificationTokenData validate(String verificationToken) {
         DecodedJWT decoded = verifier.verify(verificationToken); // lanza si es inválido/expirado
-        String sub = decoded.getSubject();
-        UUID userId = UUID.fromString(sub);
-        log.debug("Verification token valid for userId={}", userId);
-        return userId;
+
+        UUID userId = UUID.fromString(decoded.getSubject());
+
+        String jtiStr = decoded.getId();
+        if (jtiStr == null || jtiStr.isBlank()) {
+            throw new IllegalStateException("Verification token has no JTI");
+        }
+        UUID jti = UUID.fromString(jtiStr);
+
+        log.debug("Verification token valid for userId={} jti={}", userId, jti);
+
+        return new VerificationTokenData(userId, jti);
     }
 }

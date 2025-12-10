@@ -51,4 +51,10 @@ public class IdentityTransactionalConfig {
     public ChangePasswordUseCase changePasswordUseCaseTx(@Qualifier("changePasswordUseCase") ChangePasswordUseCase d) {
         return new TransactionalChangePasswordUseCase(d);
     }
+    @Bean @Primary
+    public ResendVerificationEmailUseCase resendVerificationEmailUseCaseTx(
+            @Qualifier("resendVerificationEmailUseCase") ResendVerificationEmailUseCase target
+    ) {
+        return new TransactionalResendVerificationEmailUseCase(target);
+    }
 }

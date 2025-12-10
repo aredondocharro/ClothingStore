@@ -38,6 +38,7 @@ class AuthControllerTest {
     @MockitoBean VerifyEmailUseCase verifyUC;
     @MockitoBean DeleteUserUseCase deleteUserUC;
     @MockitoBean RefreshCookieManager cookieManager;
+    @MockitoBean ResendVerificationEmailUseCase resendVerificationUC;
 
     @Test
     void login_setsRefreshCookie_andReturnsAccessInBody() throws Exception {
@@ -97,4 +98,35 @@ class AuthControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("identity.missing_parameter"));
     }
+
+    @Test
+    void resendVerification_returns202_and_neutralMessage_andCallsUseCase() throws Exception {
+        String json = """
+                { "email": "user@example.com" }
+                """;
+
+        mvc.perform(post("/auth/verify/resend")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.message").value(
+                        "If the account is not verified yet, a new verification email will be sent."
+                ));
+
+        verify(resendVerificationUC).resend(IdentityEmail.of("user@example.com"));
+    }
+
+    @Test
+    void resendVerification_invalidEmail_returns400_withValidationErrorCode() throws Exception {
+        String json = """
+                { "email": "not-an-email" }
+                """;
+
+        mvc.perform(post("/auth/verify/resend")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("identity.validation_error"));
+    }
+
 }

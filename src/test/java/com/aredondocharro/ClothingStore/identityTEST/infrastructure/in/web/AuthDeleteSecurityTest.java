@@ -1,10 +1,7 @@
 package com.aredondocharro.ClothingStore.identityTEST.infrastructure.in.web;
 
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.DeleteUserUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.LoginUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.RegisterUserUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.VerifyEmailUseCase;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.AuthController;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.RefreshCookieManager;
 import com.aredondocharro.ClothingStore.testconfig.TestSecurityConfig;
@@ -37,6 +34,7 @@ class AuthDeleteSecurityTest {
     @MockitoBean VerifyEmailUseCase verifyUC;
     @MockitoBean DeleteUserUseCase deleteUC;
     @MockitoBean RefreshCookieManager cookieManager;
+    @MockitoBean ResendVerificationEmailUseCase resendVerificationUC;
 
     @Test
     void delete_requires_authentication_returns401() throws Exception {

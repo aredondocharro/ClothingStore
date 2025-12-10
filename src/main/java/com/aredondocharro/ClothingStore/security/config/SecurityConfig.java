@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -67,16 +68,16 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         // --- SOLO endpoints realmente públicos en /auth ---
-                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET,  "/auth/verify").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/auth/password/forgot", "/auth/password/reset").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/register", "/auth/login", "/auth/verify/resend").permitAll()
+                        .requestMatchers(HttpMethod.GET,  "/auth/verify").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/password/forgot", "/auth/password/reset").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/refresh", "/auth/logout").permitAll()
 
                         // Swagger
                         .requestMatchers("/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html").permitAll()
 
                         // (Opcional pero práctico) preflight CORS
-                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // Admin por URL
                         .requestMatchers("/admin/**").hasRole("ADMIN")

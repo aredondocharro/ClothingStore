@@ -15,8 +15,18 @@ public class IdentityEventsConfig {
 
     @Bean
     public PublishVerificationEmailOnUserRegisteredService publishVerificationEmailOnUserRegisteredService(
-            TokenGeneratorPort tokens, LoadUserPort loadUsers, EventBusPort eventBus,
-            Clock clock, @Value("${app.verify.baseUrl}") String verifyBaseUrl) {
-        return new PublishVerificationEmailOnUserRegisteredService(tokens, loadUsers, eventBus, clock, verifyBaseUrl);
+            LoadUserPort loadUsers,
+            VerificationTokenRotationPort tokenRotationPort,
+            EventBusPort eventBus,
+            Clock clock,
+            @Value("${app.verify.baseUrl}") String verifyBaseUrl
+    ) {
+        return new PublishVerificationEmailOnUserRegisteredService(
+                loadUsers,
+                tokenRotationPort,
+                eventBus,
+                clock,
+                verifyBaseUrl
+        );
     }
 }

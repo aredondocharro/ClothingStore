@@ -8,6 +8,8 @@ import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.Clock;
+
 @Configuration(proxyBeanMethods = false)
 public class IdentityAdaptersPersistenceConfig {
 
@@ -36,5 +38,12 @@ public class IdentityAdaptersPersistenceConfig {
     @Bean
     public UserAdminRepositoryPort userAdminRepositoryPort(SpringDataUserRepository repo) {
         return new UserAdminRepositoryAdapter(repo);
+    }
+    @Bean
+    public VerificationTokenStorePort verificationTokenStorePort(
+            VerificationTokenRepository repo,
+            Clock clock
+    ) {
+        return new VerificationTokenStoreJpaAdapter(repo, clock);
     }
 }

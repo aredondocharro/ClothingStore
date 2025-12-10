@@ -62,7 +62,6 @@ public class EmailOutboxEntity {
     @Column(name = "sent_at")
     private Instant sentAt;
 
-
     @Version
     @Column(name = "version", nullable = false)
     private long version;

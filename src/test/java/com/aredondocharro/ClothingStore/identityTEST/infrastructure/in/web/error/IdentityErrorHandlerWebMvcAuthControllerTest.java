@@ -2,10 +2,7 @@ package com.aredondocharro.ClothingStore.identityTEST.infrastructure.in.web.erro
 
 import com.aredondocharro.ClothingStore.identity.domain.exception.EmailNotVerifiedException;
 import com.aredondocharro.ClothingStore.identity.domain.exception.InvalidCredentialsException;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.DeleteUserUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.LoginUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.RegisterUserUseCase;
-import com.aredondocharro.ClothingStore.identity.domain.port.in.VerifyEmailUseCase;
+import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.AuthController;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.RefreshCookieManager;
 import com.aredondocharro.ClothingStore.identity.infrastructure.in.web.error.IdentityGlobalErrorHandler;
@@ -37,6 +34,8 @@ class IdentityErrorHandlerWebMvcAuthControllerTest {
     @MockitoBean LoginUseCase loginUC;
     @MockitoBean VerifyEmailUseCase verifyUC;
     @MockitoBean DeleteUserUseCase deleteUserUC;
+    @MockitoBean
+    ResendVerificationEmailUseCase resendVerificationUC;
 
     @TestConfiguration
     static class Cfg {

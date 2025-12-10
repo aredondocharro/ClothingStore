@@ -13,14 +13,20 @@ import java.util.UUID;
 
 @Slf4j
 public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
+
     private final Algorithm alg;
     private final String issuer;
     private final long accessSeconds;
     private final long refreshSeconds;
     private final long verificationSeconds;
 
-    public JwtTokenGeneratorAdapter(String secret, String issuer,
-                                    long accessSeconds, long refreshSeconds, long verificationSeconds) {
+    public JwtTokenGeneratorAdapter(
+            String secret,
+            String issuer,
+            long accessSeconds,
+            long refreshSeconds,
+            long verificationSeconds
+    ) {
         this.alg = Algorithm.HMAC256(secret);
         this.issuer = issuer;
         this.accessSeconds = accessSeconds;
@@ -32,9 +38,8 @@ public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
     public String generateAccessToken(User u) {
         Instant now = Instant.now();
 
-        // Mapea Set<Role> -> String[]
         String[] roleNames = u.roles().stream()
-                .map(Role::name)                // o .map(r -> "ROLE_" + r.name())
+                .map(Role::name)
                 .toArray(String[]::new);
 
         String token = JWT.create()
@@ -43,7 +48,7 @@ public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
                 .withIssuedAt(Date.from(now))
                 .withExpiresAt(Date.from(now.plusSeconds(accessSeconds)))
                 .withClaim("email", u.email().getValue())
-                .withArrayClaim("roles", roleNames)     // ← ahora sí: String[]
+                .withArrayClaim("roles", roleNames)
                 .withClaim("type", "access")
                 .sign(alg);
 
@@ -54,6 +59,7 @@ public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
     @Override
     public String generateRefreshToken(User u) {
         Instant now = Instant.now();
+
         String token = JWT.create()
                 .withIssuer(issuer)
                 .withSubject(u.id().toString())
@@ -70,8 +76,11 @@ public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
     @Override
     public String generateVerificationToken(User u) {
         Instant now = Instant.now();
+        UUID jti = UUID.randomUUID();
+
         String token = JWT.create()
                 .withIssuer(issuer)
+                .withJWTId(jti.toString()) // ← JTI
                 .withSubject(u.id().toString())
                 .withIssuedAt(Date.from(now))
                 .withExpiresAt(Date.from(now.plusSeconds(verificationSeconds)))
@@ -79,7 +88,7 @@ public class JwtTokenGeneratorAdapter implements TokenGeneratorPort {
                 .withClaim("type", "verify")
                 .sign(alg);
 
-        log.debug("Verification token generated for userId={}", u.id());
+        log.debug("Verification token generated for userId={} jti={}", u.id(), jti);
         return token;
     }
 }

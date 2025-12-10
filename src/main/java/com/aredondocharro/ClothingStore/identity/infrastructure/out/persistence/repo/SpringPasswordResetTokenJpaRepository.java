@@ -1,7 +1,5 @@
 package com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.repo;
 
-
-
 import com.aredondocharro.ClothingStore.identity.infrastructure.out.persistence.entity.PasswordResetTokenEntity;
 import org.springframework.data.jpa.repository.*;
 

@@ -54,6 +54,8 @@ class IdentityErrorHandlerTest {
     @MockitoBean RefreshAccessTokenUseCase refreshUC;
     @MockitoBean LogoutUseCase logoutUC;
     @MockitoBean RefreshCookieManager cookieManager;
+    @MockitoBean ResendVerificationEmailUseCase resendVerificationUC;
+
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

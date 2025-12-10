@@ -3,10 +3,7 @@ package com.aredondocharro.ClothingStore.identity.infrastructure.in.web;
 import com.aredondocharro.ClothingStore.identity.domain.model.IdentityEmail; // VO correcto
 import com.aredondocharro.ClothingStore.identity.domain.model.UserId;
 import com.aredondocharro.ClothingStore.identity.domain.port.in.*;
-import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.AuthResponse;
-import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.LoginRequest;
-import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.MessageResponse;
-import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.RegisterRequest;
+import com.aredondocharro.ClothingStore.identity.infrastructure.in.dto.*;
 import com.aredondocharro.ClothingStore.security.port.AuthPrincipal;
 import com.aredondocharro.ClothingStore.shared.log.LogSanitizer;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,7 +36,7 @@ public class AuthController {
     private final VerifyEmailUseCase verifyUC;
     private final DeleteUserUseCase deleteUserUC;
     private final RefreshCookieManager cookieManager; // Gestor de cookie HttpOnly para refresh
-
+    private final ResendVerificationEmailUseCase resendVerificationUC;
     @Operation(
             summary = "Register a new user (email verification required)",
             description = "Creates the user with unverified email, sends a verification email, and returns HTTP 202 (Accepted).",
@@ -253,4 +250,65 @@ public class AuthController {
         // En el body devolvemos solo el access token
         return ResponseEntity.ok(new AuthResponse(result.accessToken(), null));
     }
+    @Operation(
+            summary = "Resend verification email",
+            description = """
+                    Rotates the verification token and enqueues a new verification email if the account exists and is not verified yet.
+                    For security reasons, this endpoint always returns a neutral message and does not reveal whether the email is registered or already verified.
+                    """,
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ResendVerificationEmailRequest.class),
+                            examples = @ExampleObject(
+                                    name = "resendVerification",
+                                    value = """
+                        { "email": "user@example.com" }
+                        """
+                            )
+                    )
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "202",
+                            description = "Request accepted (neutral message, email may or may not exist / be verified)",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = MessageResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "message": "If the account is not verified yet, a new verification email will be sent." }
+                        """)
+                            )
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Validation error",
+                            content = @Content(
+                                    mediaType = "application/json",
+                                    schema = @Schema(implementation = MessageResponse.class),
+                                    examples = @ExampleObject(value = """
+                        { "message": "Validation error" }
+                        """)
+                            )
+                    )
+            }
+    )
+    @PostMapping(path = "/verify/resend", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<MessageResponse> resendVerification(
+            @Valid @RequestBody ResendVerificationEmailRequest body
+    ) {
+        IdentityEmail emailVO = IdentityEmail.of(body.email());
+        log.info("POST /auth/verify/resend email={}", LogSanitizer.maskEmail(emailVO.getValue()));
+
+        resendVerificationUC.resend(emailVO);
+
+        // Respuesta neutra para no hacer user-enumeration
+        return ResponseEntity.accepted()
+                .body(new MessageResponse("If the account is not verified yet, a new verification email will be sent."));
+    }
+
+
+
+
 }

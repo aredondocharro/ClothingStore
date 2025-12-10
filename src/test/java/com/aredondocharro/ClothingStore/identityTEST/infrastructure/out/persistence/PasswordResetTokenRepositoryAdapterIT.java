@@ -39,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Import({
         TestcontainersConfiguration.class,
         PasswordResetTokenRepositoryAdapter.class,
-        PasswordResetTokenRepositoryAdapterIT.MapperTestConfig.class // 👈 IMPORTANTE
+        PasswordResetTokenRepositoryAdapterIT.MapperTestConfig.class
 })
 class PasswordResetTokenRepositoryAdapterIT {
 
