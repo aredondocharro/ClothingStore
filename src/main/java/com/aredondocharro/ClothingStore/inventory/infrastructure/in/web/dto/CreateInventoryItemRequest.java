@@ -2,9 +2,9 @@ package com.aredondocharro.ClothingStore.inventory.infrastructure.in.web.dto;
 
 import com.aredondocharro.ClothingStore.inventory.domain.model.*;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import com.aredondocharro.ClothingStore.inventory.domain.model.Size;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 
@@ -18,7 +18,8 @@ public record CreateInventoryItemRequest(
         @NotNull Size size,
         @NotNull Fabric fabric,
         String color,
-        @NotNull BigDecimal priceAmount,
-        @NotBlank String priceCurrency,
-        @Min(0) int initialOnHand
+        @NotNull @DecimalMin(value = "0.00", inclusive = true) BigDecimal priceAmount,
+        @NotBlank @JsonAlias("currencyCode") String priceCurrency,
+        @Min(0) @JsonAlias("initialStock") int initialOnHand
 ) {}
+

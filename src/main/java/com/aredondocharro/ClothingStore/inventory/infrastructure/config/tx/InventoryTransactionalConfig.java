@@ -1,64 +1,146 @@
 package com.aredondocharro.ClothingStore.inventory.infrastructure.config.tx;
 
-import com.aredondocharro.ClothingStore.inventory.application.*;
 import com.aredondocharro.ClothingStore.inventory.domain.port.in.*;
-import com.aredondocharro.ClothingStore.inventory.infrastructure.tx.*;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.interceptor.NameMatchTransactionAttributeSource;
+import org.springframework.transaction.interceptor.RuleBasedTransactionAttribute;
+import org.springframework.transaction.interceptor.TransactionInterceptor;
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class InventoryTransactionalConfig {
 
-    private TransactionTemplate tx(PlatformTransactionManager tm) {
-        return new TransactionTemplate(tm);
+    // -------------------------
+    // WRITE use cases (tx)
+    // -------------------------
+
+    @Bean
+    @Primary
+    public CreateInventoryItemUseCase createInventoryItemUseCase(
+            @Qualifier("transactionManager") PlatformTransactionManager txManager,
+            @Qualifier("createInventoryItemUseCaseCore") CreateInventoryItemUseCase core
+    ) {
+        return txProxy(CreateInventoryItemUseCase.class, core, txManager, false);
     }
 
     @Bean
-    CreateInventoryItemUseCase createInventoryItemUseCase(CreateInventoryItemService svc, PlatformTransactionManager tm) {
-        return new TransactionalCreateInventoryItemUseCase(svc, tx(tm));
+    @Primary
+    public UpdateInventoryItemUseCase updateInventoryItemUseCase(
+            @Qualifier("transactionManager") PlatformTransactionManager txManager,
+            @Qualifier("updateInventoryItemUseCaseCore") UpdateInventoryItemUseCase core
+    ) {
+        return txProxy(UpdateInventoryItemUseCase.class, core, txManager, false);
     }
 
     @Bean
-    UpdateInventoryItemUseCase updateInventoryItemUseCase(UpdateInventoryItemService svc, PlatformTransactionManager tm) {
-        return new TransactionalUpdateInventoryItemUseCase(svc, tx(tm));
+    @Primary
+    public ChangeInventoryItemPriceUseCase changeInventoryItemPriceUseCase(
+            @Qualifier("transactionManager") PlatformTransactionManager txManager,
+            @Qualifier("changeInventoryItemPriceUseCaseCore") ChangeInventoryItemPriceUseCase core
+    ) {
+        return txProxy(ChangeInventoryItemPriceUseCase.class, core, txManager, false);
     }
 
     @Bean
-    ChangeInventoryItemPriceUseCase changeInventoryItemPriceUseCase(ChangeInventoryItemPriceService svc, PlatformTransactionManager tm) {
-        return new TransactionalChangeInventoryItemPriceUseCase(svc, tx(tm));
+    @Primary
+    public AdjustInventoryStockUseCase adjustInventoryStockUseCase(
+            @Qualifier("transactionManager") PlatformTransactionManager txManager,
+            @Qualifier("adjustInventoryStockUseCaseCore") AdjustInventoryStockUseCase core
+    ) {
+        return txProxy(AdjustInventoryStockUseCase.class, core, txManager, false);
     }
 
     @Bean
-    AdjustInventoryStockUseCase adjustInventoryStockUseCase(AdjustInventoryStockService svc, PlatformTransactionManager tm) {
-        return new TransactionalAdjustInventoryStockUseCase(svc, tx(tm));
+    @Primary
+    public DiscontinueInventoryItemUseCase discontinueInventoryItemUseCase(
+            @Qualifier("transactionManager") PlatformTransactionManager txManager,
+            @Qualifier("discontinueInventoryItemUseCaseCore") DiscontinueInventoryItemUseCase core
+    ) {
+        return txProxy(DiscontinueInventoryItemUseCase.class, core, txManager, false);
+    }
+
+    // -------------------------
+    // READ use cases (tx, readOnly)
+    // -------------------------
+
+    @Bean
+    @Primary
+    public GetInventoryItemUseCase getInventoryItemUseCase(
+            @Qualifier("transactionManager") PlatformTransactionManager txManager,
+            @Qualifier("getInventoryItemUseCaseCore") GetInventoryItemUseCase core
+    ) {
+        return txProxy(GetInventoryItemUseCase.class, core, txManager, true);
     }
 
     @Bean
-    DiscontinueInventoryItemUseCase discontinueInventoryItemUseCase(DiscontinueInventoryItemService svc, PlatformTransactionManager tm) {
-        return new TransactionalDiscontinueInventoryItemUseCase(svc, tx(tm));
+    @Primary
+    public SearchInventoryItemsUseCase searchInventoryItemsUseCase(
+            @Qualifier("transactionManager") PlatformTransactionManager txManager,
+            @Qualifier("searchInventoryItemsUseCaseCore") SearchInventoryItemsUseCase core
+    ) {
+        return txProxy(SearchInventoryItemsUseCase.class, core, txManager, true);
     }
 
-    // Reads: puedes exponer directamente sin wrapper
-    @Bean
-    GetInventoryItemUseCase getInventoryItemUseCase(GetInventoryItemService svc) { return svc; }
+    // -------------------------
+    // STOCK reservation flow (tx)
+    // -------------------------
 
     @Bean
-    SearchInventoryItemsUseCase searchInventoryItemsUseCase(SearchInventoryItemsService svc) { return svc; }
-
-    @Bean
-    ReserveStockUseCase reserveStockUseCase(ReserveStockService svc, PlatformTransactionManager tm) {
-        return new TransactionalReserveStockUseCase(svc, tx(tm));
+    @Primary
+    public ReserveStockUseCase reserveStockUseCase(
+            @Qualifier("transactionManager") PlatformTransactionManager txManager,
+            @Qualifier("reserveStockUseCaseCore") ReserveStockUseCase core
+    ) {
+        return txProxy(ReserveStockUseCase.class, core, txManager, false);
     }
 
     @Bean
-    ReleaseStockUseCase releaseStockUseCase(ReleaseStockService svc, PlatformTransactionManager tm) {
-        return new TransactionalReleaseStockUseCase(svc, tx(tm));
+    @Primary
+    public ReleaseStockUseCase releaseStockUseCase(
+            @Qualifier("transactionManager") PlatformTransactionManager txManager,
+            @Qualifier("releaseStockUseCaseCore") ReleaseStockUseCase core
+    ) {
+        return txProxy(ReleaseStockUseCase.class, core, txManager, false);
     }
 
     @Bean
-    ConsumeStockUseCase consumeStockUseCase(ConsumeStockService svc, PlatformTransactionManager tm) {
-        return new TransactionalConsumeStockUseCase(svc, tx(tm));
+    @Primary
+    public ConsumeStockUseCase consumeStockUseCase(
+            @Qualifier("transactionManager") PlatformTransactionManager txManager,
+            @Qualifier("consumeStockUseCaseCore") ConsumeStockUseCase core
+    ) {
+        return txProxy(ConsumeStockUseCase.class, core, txManager, false);
+    }
+
+    // -------------------------
+    // Internal helper
+    // -------------------------
+
+    private static <T> T txProxy(
+            Class<T> iface,
+            T target,
+            PlatformTransactionManager txManager,
+            boolean readOnly
+    ) {
+        RuleBasedTransactionAttribute attr = new RuleBasedTransactionAttribute();
+        attr.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
+        attr.setReadOnly(readOnly);
+
+        NameMatchTransactionAttributeSource tas = new NameMatchTransactionAttributeSource();
+        tas.addTransactionalMethod("*", attr);
+
+        TransactionInterceptor interceptor = new TransactionInterceptor(txManager, tas);
+
+        ProxyFactory pf = new ProxyFactory();
+        pf.setTarget(target);
+        pf.setInterfaces(iface);
+        pf.addAdvice(interceptor);
+
+        return iface.cast(pf.getProxy());
     }
 }
